@@ -221,3 +221,27 @@ CampaignNote.belongsTo(CampaignNoteThread, {foreignKey: 'noteId'});
 Campaign.hasMany(PartyMessage, {foreignKey: 'campaignId'});
 PartyMessage.belongsTo(Campaign, {foreignKey: 'campaignId'});
 
+// Initialize database
+async function intializeDatabase() {
+    try {
+        await db.authenticate();
+        console.log('Database connection established successfully.');
+
+        await db.sync({ force: false });
+        console.log('Database synchronized successfully.');
+    } catch (error) {
+        console.error('Unable to connect to database:', error);
+    }
+}
+
+intializeDatabase();
+
+module.exports = {
+    db,
+    User,
+    Campaign,
+    PlayerCharacter,
+    CampaignNoteThread,
+    CampaignNote,
+    PartyMessage
+};
