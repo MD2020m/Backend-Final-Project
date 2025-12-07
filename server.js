@@ -143,7 +143,7 @@ app.put('/api/campaigns/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/projects/: id - Delete Campaign (TODO: Campaign's DM only)
+// DELETE /api/campaigns/:id - Delete Campaign (TODO: Campaign's DM only)
 app.delete('/api/campaigns/:id', async (req, res) => {
     try {
         const deletedRowsCount = await Campaign.destroy({
@@ -193,6 +193,101 @@ app.get('/api/my_characters/:id', /*requireAuth,*/ async (req, res) => {
 });
 
 // TODO: Add POST, PUT, DELETE for PlayerCharacters
+
+// POST/ api/my_characters - create a new PlayerCharacter
+app.post('/api/my_characters', async (req, res) => {
+    try{
+        const { 
+            name, race, gender, primaryClass, primaryClassLevel,
+            secondaryClass, secondaryClassLevel, tertiaryClass, 
+            tertiaryClassLevel, constitution, strength, dexterity,
+            intelligence, wisdom, charisma, armorClass, hp, inventory,
+            spellCasts, backstory, alignment, origin, userId, campaignId 
+        } = req.body;
+
+        const newChar = await PlayerCharacter.create({
+            alive: true,
+            name,
+            race,
+            gender,
+            primaryClass,
+            primaryClassLevel,
+            secondaryClass,
+            secondaryClassLevel,
+            tertiaryClass,
+            tertiaryClassLevel,
+            constitution,
+            strength,
+            dexterity,
+            intelligence,
+            wisdom,
+            charisma,
+            armorClass,
+            hp,
+            inventory,
+            spellCasts,
+            backstory,
+            alignment,
+            origin,
+            userId,
+        });
+
+        res.status(201).json(newChar);
+    } catch (error) {
+        console.error('Error creating player character:', error);
+        res.status(500).json({ error: 'Failed to create player character' });
+    }
+});
+
+// PUT /api/my_characters/:id - Update an existing character
+app.put('/api/my_characters/:id', async (req, res) => {
+    try {
+        const { 
+            alive, name, race, gender, primaryClass, primaryClassLevel,
+            secondaryClass, secondaryClassLevel, tertiaryClass, 
+            tertiaryClassLevel, constitution, strength, dexterity,
+            intelligence, wisdom, charisma, armorClass, hp, inventory,
+            spellCasts, backstory, alignment, origin, userId, campaignId 
+        } = req.body;
+
+        const [updatedRowsCount] = await PlayerCharacter.update(
+            { alive, name, race, gender, primaryClass, primaryClassLevel,
+            secondaryClass, secondaryClassLevel, tertiaryClass, 
+            tertiaryClassLevel, constitution, strength, dexterity,
+            intelligence, wisdom, charisma, armorClass, hp, inventory,
+            spellCasts, backstory, alignment, origin, userId, campaignId },
+            { where: { charId: req.params.id }}
+        );
+
+        if (updatedRowsCount === 0) {
+            return res.status(404).json({ error: 'Player character not found' });
+        }
+
+        const updatedChar = await PlayerCharacter.findByPk(req.params.id);
+        res.json(updatedChar);
+    } catch (error) {
+        console.error('Error updating character:', error);
+        res.status(500).json({ error: 'Failed to update character' });
+    }
+});
+
+// DELETE /api/my_characters
+app.delete('/api/my_characters/:id', async (req, res) => {
+    try {
+        const deletedRowsCount = await PlayerCharacter.destroy({
+            where: { charId: req.params.id }
+        });
+
+        if (deletedRowsCount === 0) {
+            return res.status(404).json({ error: 'Player character not found' });
+        }
+
+        res.json({ message: 'Player character deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting player character:', error);
+        res.status(500).json({ error: 'Failed to delete player character' });
+    }
+});
 
 // CAMPAINGNOTE ROUTES
 app.get('/api/campaign_notes', async (req, res) => {
