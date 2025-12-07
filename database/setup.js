@@ -203,8 +203,8 @@ const PartyMessage = db.define('PartyMessage', {
 });
 
 // Define Relationships
-Campaign.hasOne(User, {foreignKey: 'userId', as: 'dungeonMaster'});
 User.hasMany(Campaign, {foreignKey: 'userId', as: 'dmsCampaign'});
+Campaign.belongsTo(User, {foreignKey: 'userId', as: 'dungeonMaster'});
 
 User.hasMany(PlayerCharacter, {foreignKey: 'userId'});
 PlayerCharacter.belongsTo(User, {foreignKey: 'userId'});
