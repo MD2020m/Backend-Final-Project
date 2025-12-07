@@ -79,7 +79,7 @@ app.get('/api/campaigns/:id', /*requireAuth,*/ async (req, res) => {
                 },
                 {
                     model: PlayerCharacter,
-                    attributes: ['charId','alive','name','race','gender'],
+                    attributes: ['charId','alive','name'],
                     include: [
                         {
                             model: User,
@@ -98,6 +98,66 @@ app.get('/api/campaigns/:id', /*requireAuth,*/ async (req, res) => {
     } catch (error) {
         console.error('Error fetching campaign:', error);
         res.status(500).json({ error: 'Failed to fetch campaign' });
+    }
+});
+
+// POST /api/campaigns - Create a new campaign
+// TODO: adjust route to require authentication and automatically assign creator as DM
+app.post('/api/campaigns', /*requireAuth,*/ async (req, res) => {
+    try {
+        const { title, description, schedule, userId } = req.body;
+
+        const newCampaign = await Campaign.create({
+            title,
+            description,
+            schedule,
+            userId
+        });
+
+        res.status(201).json(newCampaign);
+    } catch (error) {
+        console.error('Error creating campaign:', error);
+        res.status(500).json({ error: 'Failed to create campaign' });
+    }
+});
+
+// PUT /api/campaigns/:id - Update campaign (TODO: Only allow campaign's DM)
+app.put('/api/campaigns/:id', async (req, res) => {
+    try {
+        const {title, description, schedule } = req.body;
+
+        const [updatedRowsCount] = await Campaign.update(
+            { title, description, schedule },
+            { where: { campaignId: req.params.id } }
+        );
+
+        if (updatedRowsCount === 0) {
+            return res.status(404).json({ error: 'Campaign not found' });
+        }
+
+        const updatedCampaign = await Campaign.findByPk(req.params.id);
+        res.json(updatedCampaign);
+    } catch (error) {
+        console.error('Error updating campaign:', error);
+        res.status(500).json({ error: 'Failed to update campaign' });
+    }
+});
+
+// DELETE /api/projects/: id - Delete Campaign (TODO: Campaign's DM only)
+app.delete('/api/campaigns/:id', async (req, res) => {
+    try {
+        const deletedRowsCount = await Campaign.destroy({
+            where: { campaignId: req.params.id }
+        });
+
+        if (deletedRowsCount === 0) {
+            return res.status(404).json({ error: 'Campaign not found' });
+        }
+
+        res.json({ message: 'Campaign deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting campaign:', error);
+        res.status(500).json({ error: 'Failed to delete campaign' });
     }
 });
 
@@ -131,6 +191,11 @@ app.get('/api/my_characters/:id', /*requireAuth,*/ async (req, res) => {
         res.status(500).json( {error: 'Failed to fetch character' });
     }
 });
+
+// CAMPAINGNOTE ROUTES
+
+
+// PARTYMESSAGEROUTES
 
 
 
