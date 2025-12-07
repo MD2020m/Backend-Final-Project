@@ -171,10 +171,6 @@ const CampaignNote = db.define('CampaignNote', {
         type: DataTypes.STRING,
         allowNull: false
     },
-    authorId: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
     timePosted: {
         type: DataTypes.DATE,
         allowNull: false
@@ -190,10 +186,6 @@ const PartyMessage = db.define('PartyMessage', {
     },
     content: {
         type: DataTypes.STRING,
-        allowNull: false
-    },
-    authorId: {
-        type: DataTypes.INTEGER,
         allowNull: false
     },
     timePosted: {
@@ -215,11 +207,17 @@ PlayerCharacter.belongsTo(Campaign, {foreignKey: 'campaignId'});
 Campaign.hasMany(CampaignNoteThread, {foreignKey: 'campaignId'});
 CampaignNoteThread.belongsTo(Campaign, {foreignKey: 'campaignId'});
 
-CampaignNoteThread.hasMany(CampaignNote, {foreignKey: 'noteId'});
-CampaignNote.belongsTo(CampaignNoteThread, {foreignKey: 'noteId'});
+CampaignNoteThread.hasMany(CampaignNote, {foreignKey: 'threadId'});
+CampaignNote.belongsTo(CampaignNoteThread, {foreignKey: 'threadId'});
+
+User.hasMany(CampaignNote, { foreignKey: 'userId' });
+CampaignNote.belongsTo(User, {foreignKey: 'userId' });
 
 Campaign.hasMany(PartyMessage, {foreignKey: 'campaignId'});
 PartyMessage.belongsTo(Campaign, {foreignKey: 'campaignId'});
+
+User.hasMany(PartyMessage, { foreignKey: 'userId' });
+PartyMessage.belongsTo(User, { foreignKey: 'userId' });
 
 // Initialize database
 async function intializeDatabase() {

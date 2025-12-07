@@ -1,5 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { db, User, Campaign, PlayerCharacter, CampaignNoteThread, CampaignNote, PartyMessage } = require('./setup');
+const { now } = require('sequelize/lib/utils');
+const { Sequelize } = require('sequelize');
 
 async function seedDatabase() {
     try {
@@ -31,19 +33,19 @@ async function seedDatabase() {
                 title: "Hoard of the Dragon Queen",
                 description: "Track down an ancient and malevolent dragon to stop her rampage and steal the treasure she hoards",
                 schedule: "Thursdays, 7-10pm",
-                userId: users[2].id
+                userId: users[1].id
             },
             {
                 title: "High Seas Heist",
                 description: "Sail the seven seas collecting treasure along the way in search of a legendary quarry fabled to lie under heavy guard in a far off land",
                 schedule: null,
-                userId: users[2].id
+                userId: users[1].id
             },
             {
                 title: "A New World",
                 description: "A beam of light appears from above in a fading old world underground. A group of heros are sent on an expedition in search of a new hope at its source",
                 schedule: null,
-                userId: users[1].id
+                userId: users[0].id
             }
         ]);
 
@@ -73,8 +75,8 @@ async function seedDatabase() {
                 backstory: 'A banished princess from a far off land, Alyson Woodbrace learned to make her way through the world with her sword. Though a seasoned traveler and an excellent warrior, she has had little time to spare on much else',
                 alignment:'True Neutral',
                 origin: 'Royal',
-                userId: users[1].id,
-                campaignId: campaigns[1].id
+                userId: users[0].id,
+                campaignId: campaigns[0].id
             },
             {
                 alive: true,
@@ -100,8 +102,8 @@ async function seedDatabase() {
                 backstory: "In Gorub's tribe, orcs are sent out to prove themselves by using their strength and whatever cunning they can muster to bring a great treasure back to the tribe. Gorub has been searching for years now, and is determined to end his search soon",
                 alignment: 'Chaotic Neutral',
                 origin: null,
-                userId: users[3].id,
-                campaignId: campaigns[2].id
+                userId: users[2].id,
+                campaignId: campaigns[1].id
             },
             {
                 alive: true,
@@ -127,8 +129,8 @@ async function seedDatabase() {
                 backstory: 'Poor Gruff was kidnapped at a young age by pirates who believed a minotaur might prove useful and raised on the seas by a skilled dwarf who shared his fate. When the crew that had conscripted him was defeated, Gruff narrowly escaped with his life and a determination to find his way home',
                 alignment: 'Neutral Good',
                 origin: null,
-                userId: users[1].id,
-                campaignId: campaigns[2].id
+                userId: users[0].id,
+                campaignId: campaigns[1].id
             },
             {
                 alive: true,
@@ -154,10 +156,65 @@ async function seedDatabase() {
                 backstory: "Burny was created from scavenged tree roots as an eternal sentinel for the capital during the kingdom's golden age. But that age has gone now, and Burny has guarded only himself for some time, having been discarded by the capital's remaining citizens, who would prefer no sentinel keep watch over them",
                 alignment: 'lawful good',
                 origin: null,
-                userId: users[2].id,
-                campaignId: campaigns[3].id
+                userId: users[1].id,
+                campaignId: campaigns[2].id
             }
         ]);
+
+        // Create sample CampaignNoteThreads
+        campaignNoteThreads = await CampaignNoteThread.bulkCreate([
+            {
+                toCharacter: null,
+                campaignId: campaigns[0].id
+            },
+            {
+                toCharacter: playerCharacters[0].id,
+                campaignId: playerCharacters[0].campaignId
+            },
+            {
+                toCharacter: null,
+                campaignId: campaigns[1].id
+            }
+        ]);
+
+        // Create sample CampaignNotes
+        await CampaignNote.bulkCreate([
+            {
+                content: "Hey everyone, here's an summary in case you forgot anything from last night's campaign...",
+                timePosted: Sequelize.literal('CURRENT_TIMESTAMP'),
+                userId: users[1].id,
+                threadId: campaignNoteThreads[0].id
+            },
+            {
+                content: "Hey, during the long rest you took at the end of last session, your character had a dream about... ",
+                timePosted: Sequelize.literal('CURRENT_TIMESTAMP'),
+                userId: users[1].id,
+                threadId: campaignNoteThreads[1].id
+            },
+            {
+                content: "Hey everyone, here's a quick preface for what's been going on before our first session in the world of High Seas Heist",
+                timePosted: Sequelize.literal('CURRENT_TIMESTAMP'),
+                userId: users[1].id,
+                threadId: campaignNoteThreads[2].id
+            }
+        ]);
+
+        // Create a sample PartyMessage
+        await PartyMessage.bulkCreate([
+            {
+                content: "Hey everyone, I was hoping we could switch to a new day for session. Thursday doesn't work for me anymore",
+                timePosted: Sequelize.literal('CURRENT_TIMESTAMP'),
+                campaignId: campaigns[0].id,
+                userId: users[0].id
+            },
+            {
+                content: "Hey everyone, I'm really excited to start 'A New World'! Can you all let me know what days and times work best for regular session?",
+                timePosted: Sequelize.literal('CURRENT_TIMESTAMP'),
+                campaignId: campaigns[2].id,
+                userId: users[0].id
+            }
+        ]);
+
         console.log('Database seeded successfully!');
         console.log('Sample Users: dmarsh00, tofutron, totinos34');
         console.log('All passwords: password123');
