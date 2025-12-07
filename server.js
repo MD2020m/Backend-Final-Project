@@ -192,10 +192,82 @@ app.get('/api/my_characters/:id', /*requireAuth,*/ async (req, res) => {
     }
 });
 
+// TODO: Add POST, PUT, DELETE for PlayerCharacters
+
 // CAMPAINGNOTE ROUTES
+app.get('/api/campaign_notes', async (req, res) => {
+    try {
+        const threads = await CampaignNoteThread.findAll({
+            include: [
+                {
+                    model: CampaignNote
+                }
+            ]
+        });
+
+        res.json(threads);
+    } catch (error) {
+        console.error('Error fetching Campaign Note Threads:', error);
+        res.status(500).json({ error: 'Failed to fetch campaign note threads'});
+    }
+});
+
+app.get('/api/campaign_notes/:thread_id', async (req, res) => {
+    try {
+        const thread = await CampaignNoteThread.findByPk(req.params.thread_id, {
+            include: [
+                {
+                    model: CampaignNote
+                }
+            ]
+        });
+
+        if (!thread) {
+            return res.status(404).json({ message: 'Campaign note thread not found' });
+        }
+
+        res.json(thread);
+    } catch (error) {
+        console.error('Failed to fetch campaign note thread:', error);
+        res.status(500).json({ error: 'Failed to fetch campaign note thread' });
+    }
+});
 
 
-// PARTYMESSAGEROUTES
+// PARTYMESSAGE ROUTES
+app.get('/api/party_messages', async (req, res) => {
+    try {
+        const messages = await PartyMessage.findAll();
+
+        res.json(messages);
+    } catch (error) {
+        console.error('Error fetching party messages:', error);
+        res.status(500).json({ error: 'Failed to fetch party messages' });
+    }
+});
+
+app.get('/api/party_messages/:campaign_id', async (req, res) => {
+    try {
+        const campaign = await Campaign.findByPk(req.params.campaign_id);
+        
+        if (!campaign) {
+            return res.status(404).json({ message: 'Campaign not found' });
+        }
+
+        const messages = await PartyMessage.findAll({
+            where: { campaignId: req.params.campaign_id }
+        });
+
+        if (!messages) {
+            res.status(404).json({ message: `No messages for campaign with id ${req.params.campaign_id}` });
+        }
+
+        res.json(messages);
+    } catch (error) {
+        console.error('Error fetching party messages:', error);
+        res.status(500).json({ error: 'Failed to fetch party messages' });
+    }
+})
 
 
 

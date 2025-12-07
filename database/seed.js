@@ -221,6 +221,7 @@ async function seedDatabase() {
     } catch (error) {
         console.error('Error seeding database:', error);
     } finally {
+        console.log(await PartyMessage.findAll())
         await db.close();
     }
 }
