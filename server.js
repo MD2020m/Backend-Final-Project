@@ -362,7 +362,72 @@ app.get('/api/party_messages/:campaign_id', async (req, res) => {
         console.error('Error fetching party messages:', error);
         res.status(500).json({ error: 'Failed to fetch party messages' });
     }
-})
+});
+
+// POST /api/party_messages/:campaign_id
+app.post('/api/party_messages/:campaign_id', async (req, res) => {
+    try {
+        const campaign = await Campaign.findByPk(req.params.campaign_id);
+
+        if (!campaign) {
+            return res.status(404).json({error: 'Campaing not found' })
+        }
+
+        const { content, userId } = req.body;
+
+        const newMessage = await PartyMessage.create({
+            content, 
+            timePosted: require('sequelize').literal('CURRENT_TIMESTAMP'),
+            userId,
+            campaignId: req.params.campaign_id
+        });
+
+        res.status(201).json(newMessage);
+    } catch (error) {
+        console.error('Error creating party message:', error);
+        res.status(500).json({ error: 'Failed to create party message' });
+    }
+});
+
+// PUT /api/party_messages/:id
+app.put('/api/party_messages/:id', async (req, res) => {
+    try {
+        const { content } = req.body;
+
+        const [updatedRowsCount] = await PartyMessage.update(
+            { content },
+            { where: { messageId: req.params.id } }
+        );
+
+        if (updatedRowsCount === 0) {
+            return res.status(404).json({ error: 'Party message not found' });
+        }
+
+        const updatedMessage = await PartyMessage.findByPk(req.params.id);
+        res.json(updatedMessage);
+    } catch (error) {
+        console.error('Error updating party message:', error);
+        res.status(500).json({ error: 'Failed to update party message' });
+    }
+});
+
+// DELETE /api/party_messages/:id
+app.delete('/api/party_messages/:id', async (req, res) => {
+    try {
+        const deletedRowsCount = await PartyMessage.destroy({
+            where: { messageId: req.params.id }
+        });
+
+        if (deletedRowsCount === 0) {
+            return res.status(404).json({ error: 'Party message not fount' });
+        }
+
+        res.json({ message: 'Party message deleted successfully' });
+    } catch (error) {
+        console.error('Error delteing party message:', error);
+        res.status(500).json({ error: 'Failed to delete party message' });
+    }
+});
 
 
 
