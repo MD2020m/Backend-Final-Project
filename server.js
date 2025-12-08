@@ -7,9 +7,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(express.json());
-app.use(requestLogger);
-
 
 const requestLogger = (req, res, next) => {
     const timestamp = new Date().toISOString();
@@ -22,6 +19,11 @@ const requestLogger = (req, res, next) => {
 
     next();
 }
+
+
+app.use(express.json());
+app.use(requestLogger);
+
 
 // TODO: Create JWT middleware for authorization
 
