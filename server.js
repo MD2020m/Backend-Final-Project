@@ -576,6 +576,10 @@ app.delete('/api/party_messages/:id', async (req, res) => {
 
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`Server running on port http://localhost:${PORT}`);
-})
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;

@@ -225,5 +225,6 @@ async function seedDatabase() {
         await db.close();
     }
 }
-
-seedDatabase();
+if (require.main === module){
+    seedDatabase();
+}

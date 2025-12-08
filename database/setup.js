@@ -232,7 +232,9 @@ async function intializeDatabase() {
     }
 }
 
-intializeDatabase();
+if (require.main === module) {
+    intializeDatabase();
+}
 
 module.exports = {
     db,
