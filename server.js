@@ -289,7 +289,9 @@ app.delete('/api/my_characters/:id', async (req, res) => {
     }
 });
 
-// CAMPAINGNOTE ROUTES
+
+
+// CAMPAINGNOTE/CAMPAIGNNOTETHREAD ROUTES
 app.get('/api/campaign_notes', async (req, res) => {
     try {
         const threads = await CampaignNoteThread.findAll({
@@ -390,6 +392,67 @@ app.delete('/api/campaign_notes/:id', async (req, res) => {
     } catch (error) {
         console.error('Error deleting campaign note:', error);
         res.status(500).json({ error: 'Failed to delete campaign note.' });
+    }
+});
+
+// POST /api/campaign_note_thread
+app.post('/api/campaign_note_thread/:campaign_id', async (req, res) => {
+    try {
+        campaign = Campaign.findByPk(req.params.campaign_id);
+
+        if (!campaign) {
+            return res.status(404).json({ error: 'Campaign not found' });
+        }
+
+        const { toCharacter } = req.body;
+
+        const newThread = await CampaignNoteThread.create({
+            toCharacter,
+            campaignId: req.params.campaign_id
+        });
+
+        res.status(201).json(newThread);
+    } catch (error) {
+        console.error('Error creating campaign note thread:', error);
+        res.status(500).json({ error: 'Failed to create campaign note thread' });
+    }
+});
+
+app.put('/api/campaign_note_thread/:id', async (req, res) => {
+    try {
+        const { toCharacter } = req.body;
+
+        const [updatedRowsCount] = await CampaignNoteThread.update(
+            { toCharacter },
+            { where: { threadId: req.params.id } }
+        );
+
+        if (updatedRowsCount === 0) {
+            return res.status(404).json({ error: 'Campaign note thread not found' });
+        }
+
+        const updatedThread = await CampaignNoteThread.findByPk(req.params.id);
+        res.json(updatedThread);
+    } catch (error) {
+        console.error('Error updating thread:', error);
+        res.status(500).json({ error: 'Failed to update campaign note thread' });
+    }
+});
+
+app.delete('/api/campaign_note_thread/:id', async (req, res) => {
+    try {
+        const deletedRowsCount = await CampaignNoteThread.destroy({
+            where: {threadId: req.params.id }
+        });
+
+        if (deletedRowsCount === 0) {
+            return res.status(404).json({ error: 'Thread not found' });
+        }
+
+        res.json({ message: 'Campaign note thread deleted successfully' });
+    } catch (error) {
+        console.error('Error deleteing campaign note thread:', error);
+        res.status(500).json({ error: 'Failed to delete campaign note thread' });
     }
 })
 
