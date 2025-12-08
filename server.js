@@ -328,6 +328,70 @@ app.get('/api/campaign_notes/:thread_id', async (req, res) => {
     }
 });
 
+// POST /api/campaign_notes/:thread_id
+app.post('/api/campaign_notes/:thread_id', async (req, res) => {
+    try {
+        thread = await CampaignNoteThread.findByPk(req.params.thread_id);
+
+        if (!thread) {
+            return res.status(404).json({ error: 'Campaign note thread not found' });
+        }
+
+        const { content, userId } = req.body;
+
+        newNote = await CampaignNote.create({
+            content,
+            timePosted: require('sequelize').literal('CURRENT_TIMESTAMP'),
+            userId,
+            threadId: req.params.thread_id
+        });
+
+        res.status(201).json(newNote);
+    } catch (error) {
+        console.error('Error creating campaign note:', error);
+        res.status(500).json({ error: 'Failed to create campaign note' });
+    }
+});
+
+// PUT /api/campaign_notes/:id
+app.put('/api/campaign_notes/:id', async (req, res) => {
+    try {
+        const { content } = req.body;
+
+        const [updatedRowsCount] = await CampaignNote.update(
+            { content },
+            { where: { noteId: req.params.id } }
+        );
+
+        if (updatedRowsCount === 0) {
+            return res.status(404).json({ error: 'Campaing note not found' });
+        }
+
+        const updatedNote = await CampaignNote.findByPk(req.params.id);
+        res.json(updatedNote);
+    } catch (error) {
+        console.error('Error updating campaign note:', error);
+        res.status(500).json({ error: 'Failed to update campaign note' });
+    }
+});
+
+// DELETE /api/campaign_notes/:id
+app.delete('/api/campaign_notes/:id', async (req, res) => {
+    try {
+        const deletedRowsCount = await CampaignNote.destroy({
+            where: { noteId: req.params.id }
+        });
+
+        if (deletedRowsCount === 0) {
+            return res.status(404).json({ error: 'Campaign note not found' });
+        }
+
+        res.json({ message: 'Campaign note deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting campaign note:', error);
+        res.status(500).json({ error: 'Failed to delete campaign note.' });
+    }
+})
 
 // PARTYMESSAGE ROUTES
 app.get('/api/party_messages', async (req, res) => {
