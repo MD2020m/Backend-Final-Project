@@ -218,7 +218,7 @@ app.post('/api/my_characters', async (req, res) => {
             secondaryClass, secondaryClassLevel, tertiaryClass, 
             tertiaryClassLevel, constitution, strength, dexterity,
             intelligence, wisdom, charisma, armorClass, hp, inventory,
-            spellCasts, backstory, alignment, origin, userId, campaignId 
+            spellCasts, backstory, alignment, origin, userId
         } = req.body;
 
         const newChar = await PlayerCharacter.create({

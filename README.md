@@ -107,4 +107,70 @@ Campaign has one PUT endpoint, `PUT /api/campaigns/:id`. This endpoint accepts t
 If the Campaign whose campaignId matches the request's id parameter exists, it will be updated to contain the data provided in the request body, and a 201 response will be returned. Otherwise, a 404 response will be returned as the requested Campaign was not found.
 
 ### DELETE
-Campaign has one DELETE endpoint, `DELETE /api/campaigns/:id`. When this endpoint receives a request, it will search for the Campaign whose campaignId matches the id request parameter. If such a Campaign is found, it will be removed from the database and a 200 response will be returned. If such a request is not found, If such a Campaign is not found, a 404 response will be returned. 
+Campaign has one DELETE endpoint, `DELETE /api/campaigns/:id`. When this endpoint receives a request, it will search for the Campaign whose campaignId matches the id request parameter. If such a Campaign is found, it will be removed from the database and a 200 response will be returned. If such a request is not found, If such a Campaign is not found, a 404 response will be returned.
+
+## PlayerCharacter endpoints
+### GET
+Like Campaign, PlayerCharacter has two GET endpoints: `GET /api/my_characters` and `GET /api/my_character/:id`.
+
+The former currently returns all PlayerCharacters. In the future, authentication processes will be implemented so that this endpoint only returns characters that a User owns. 
+
+The latter returns a single PlayerCharacter whose charId matches the id request parameter. In the future, this endpoint will be revised to only return the requested PlayerCharacter data if a User owns the PlayerCharacter.
+
+In the future, two analogous endpoints will be added for use by dms to view PlayerCharacters belonging to other Users if they participate in the a given Campaign that the User dms for.
+
+### POST
+PlayerCharacter has one POST endpoint: `POST /api/my_characters`. Users can use this endpoint to create a new PlayerCharacter. Currently, this endpoint accepts data for every field in PlayerCharacter except for alive, as well as userId. This data is used to create a new instance of PlayerCharacter with the alive field set to true by default. The User whose userId matches that given in the body will be assigned as the PlayerCharacter's owner. In the future, authentication processes will be used to automatically assign a User as the owner of any PlayerCharacter they create.
+
+### PUT
+PlayerCharacter has one PUT endpoint:` PUT /api/my_characters/:id`. This endpoint accapts data for every field in PlayerCharacter in the request body. If a PlayerCharacter whose charId matches the id request parameter is found, the PlayerCharacter will be updated with the data given in the request body. Otherwise, a 404 response will be returned as the requested PlayerCharacter was not found.
+
+### DELETE
+PlayerCharacter's DELETE endpoint, `DELETE /api/my_characters/:id` deletes a PlayerCharacter by charId. If a PlayerCharacter whose charId matches the id request parameter is not found, a 404 response will be returned.
+
+## CampaignNoteThread
+### GET
+Currently, CampaignNoteThread has no GET endpoint. Instead, the notes within any given thread can be accessed by threadId in a CampaignNote GET endpoint.
+
+### POST
+CampaignNote has one POST endpoint: `POST /api/campaign_note_thread/:campaign_id`. This endpoint accepts an optional toCharacter value in its body. This endpoint first searches for a Campaign whose campaignId matches the campaign_id request parameter. If no such Campaign is found a 404 response is returned. If such a Campaign is found a new CampaignNoteThread is created. The new CampaignNoteThread's toCharacter field is assigned the value given in the request body (or null if none was provided) and the Campaign whose campaignId matches the campaign_id request parameter is assigned as owner of the CampaignNoteThread. In addition, a 201 response will be returned.
+
+### PUT
+CampaignNoteThread has one PUT endpoint: `PUT /api/campaign_note_thread/:id`. This endpoint accepts an optional toCharacter value in its body. If a CampaignNoteThread whose threadId matches the id request parameter is found, its toCharacter field is updated to the value given in the request body (null if none is given). Otherwise, a 404 response is returned.
+
+### DELETE
+CampaignNoteThread has the `DELETE /api/campaign_note_thread/:id` endpoint. If a CampaignNoteThread whose thread_id matches the id request parameter is found, it is deleted and a 200 response is returned. Otherwise, a 404 response is returned.
+
+## CampaignNote
+### GET
+CampaignNote has two GET endpoints: `GET /api/campaign_notes` and `GET /api/campaign_notes/:thread_id`. 
+
+The former returns all CampaignNoteThreads and their respective CampaignNotes. In the future, this endpoint will be adjusted to return only CampaignNoteThreads related to a given campaign (specified through a campaign_id request parameter) that a given User has access to. 
+
+The latter returns all CampaignNotes in a given thread specified by the thread_id request parameter. If a CampaignNoteThread whose threadId is matches the thread_id parameter is not found a 404 response is returned.
+
+### POST
+CampaignNote has the the `POST /api/campaign_notes/:thread_id`. This endpoint accepts content and userId values in its request body. If a CampaignNoteThread whose threadId matches the thread_id request parameter is found a CampaignNote belonging to that thread will be created with content and userId from the request body, timePosted set to the time at which the CampaignNote was created, and threadId set to the thread_id request parameter. Otherwise, a 404 response will be returned.
+
+### PUT
+CampaingNote's PUT endpoint, `PUT /api/campaign_notes/:id` updates a CampaignNote by noteId. This endpoint accepts a content value in its request body. If a CampaignNote whose noteId matches the id request parameter is found, its content field will be updated with the content data given in the request body. Otherwise, a 404 response will be returned.
+
+### DELETE
+CampaignNote has the following DELETE endpoint: `DELETE /api/campaign_notes/:id`. If a CampaignNote whose noteId matches the id request parameter is found, it will be deleted from the database. If not, a 404 response will be returned.
+
+## PartyMessage
+PartyMessage's endpoints are analogous to CampaignNote's endpoints except that PartyMessages belong directly to Campaigns. 
+
+---
+# Setup
+To setup this application on your local device, clone this repository and follow these directions:
+## Database Setup
+database/setup.js sets up the database for this application. Before running setup.js, you should configure a .env file with a DB_TYPE variable defining the SQL dialect you wish to use, a DB_NAME variable providing a name for the .db file you wish to create, and a NODE_ENV variable specifying the type of environment you intend to operate the database in. 
+
+Once this is done, you should examine the models and relationships and relationships defined in setup.js using the Sequelize ORM and adjust them as necessary. Once these are defined to your liking, you need only run the prompt `node ./database/setup.js` in the command line to set up your database.
+
+## Database Seeding
+If you wish to seed your database, you should first examine the database/seed.js file and take note of the sample data, defined using the Sequelize ORM, that will be added to your database when this file is run. Add, remove, or edit any sample data you wish. Once your sample data is to your liking run the command `node ./database/seed.js` in the command line to seed your database with the sample data.
+
+## Server Start
+Before starting your server you should configure a PORT environment variable in your .env file to specify the port on which you will run your server. Then, examine the server.js file. This file defines middleware and routes for the application. Adjust routes and middleware as necessary. Once routes and middleware are to your liking, run the command `npm start` on your command line to start your server. Once your server is running you will be able to use your Dungeons and Dragons API on your local machine. If your application is deployed, you will be able to use your application by accessing it through the appropriate URL on any machine.
