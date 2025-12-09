@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { db, User, Campaign, PlayerCharacter, CampaignNoteThread, CampaignNote, PartyMessage } = require('./database/setup');
 require('dotenv').config();
 
@@ -8,6 +9,40 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 
+// JWT authentication middleware
+function requireAuth(req, res, next) {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+            error: 'Access denied. No token provided.'
+        });
+    }
+
+    const token = authHeader.substring(7);
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                error: 'Token expired. Please log in again'
+            });
+        } else if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({
+                error: 'Invalid token. Please log in again'
+            });
+        } else {
+            return res.status(401).json({
+                error: 'Token verification failed.'
+            });
+        }
+    }
+}
+
+// Request logging middleware
 const requestLogger = (req, res, next) => {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] ${req.method} ${req.originalUrl}`);
@@ -22,11 +57,9 @@ const requestLogger = (req, res, next) => {
 
 
 app.use(express.json());
+
+const cors = require('cors');
 app.use(requestLogger);
-
-
-// TODO: Create JWT middleware for authorization
-
 
 
 // Test database connection
@@ -43,7 +76,100 @@ testConnection();
 
 // TODO: Add authentication routes
 
+// POST /api/register - Register new user
+app.post('/api/register', async (req, res) => {
+    try {
+        const { username, password } = req.body;
 
+        // Validate input
+        if (!username || !password) {
+            return res.status(400).json({
+                error: 'Username and password are required.'
+            });
+        }
+
+        // Check if username is in use
+        const existingUser = await User.findOne({ where: { username } });
+        if (existingUser) {
+            return res.status(400).json({
+                error: 'User with this username already exists'
+            });
+        }
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create user
+        const newUser = await User.create({
+            username,
+            password: hashedPassword
+        });
+
+        res.status(201).json({
+            message: 'User registered successfully',
+            user: {
+                id: newUser.userId,
+                username: newUser.username
+            }
+        });
+    } catch (error) {
+        console.error('Error registering user:', error);
+        res.status(500).json({ error: 'Failed to register user' });
+    }
+});
+
+// POST /api/login - User login
+app.post('/api/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        // Validate input
+        if (!username || !password) {
+            return res.status(400).json({
+                error: 'Username nad password are required'
+            });
+        }
+
+        // Find user
+        const user = await User.findOne({ where: { username } });
+        if (!user) {
+            return res.status(401).json({
+                error: 'Invalid username or password'
+            });
+        }
+
+        // Verify password
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return res.status(401).json({
+                error: 'Invalid username or password'
+            });
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+            {
+                userId: user.userId,
+                username: user.username
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRES_IN }
+        );
+
+        res.json({
+            message: 'Login successful',
+            token: token,
+            user: {
+                userId: user.userId,
+                username: user.username
+            }
+        });
+
+    } catch (error) {
+        console.error('Error logging in user:', error);
+        res.status(500).json({ error: 'Failed to login' });
+    }
+});
 
 // CAMPAIGN ROUTES 
 
