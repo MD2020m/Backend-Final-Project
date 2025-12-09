@@ -177,7 +177,7 @@ app.post('/api/login', async (req, res) => {
 // GET /api/campaigns - Return all campaigns
 
 // TODO: Get endpoint to return info about players and characters involved
-app.get('/api/campaigns', /*requireAuth,*/ async (req, res) => {
+app.get('/api/campaigns', requireAuth, async (req, res) => {
     try {
         const campaigns = await Campaign.findAll({
             include: [
@@ -210,7 +210,7 @@ app.get('/api/campaigns', /*requireAuth,*/ async (req, res) => {
 // GET /api/campaing/:id - Return a Campaign by id
 
 // TODO: Get endpoint to return info about characters and players involved
-app.get('/api/campaigns/:id', /*requireAuth,*/ async (req, res) => {
+app.get('/api/campaigns/:id', requireAuth, async (req, res) => {
     try {
         const campaign = await Campaign.findByPk(req.params.id, {
             include: [
@@ -245,9 +245,12 @@ app.get('/api/campaigns/:id', /*requireAuth,*/ async (req, res) => {
 
 // POST /api/campaigns - Create a new campaign
 // TODO: adjust route to require authentication and automatically assign creator as DM
-app.post('/api/campaigns', /*requireAuth,*/ async (req, res) => {
+app.post('/api/campaigns', requireAuth, async (req, res) => {
     try {
-        const { title, description, schedule, userId } = req.body;
+        // Get userId from JWT to assign creator as dm
+        const userId = req.user.userId
+
+        const { title, description, schedule } = req.body;
 
         const newCampaign = await Campaign.create({
             title,
@@ -264,7 +267,7 @@ app.post('/api/campaigns', /*requireAuth,*/ async (req, res) => {
 });
 
 // PUT /api/campaigns/:id - Update campaign (TODO: Only allow campaign's DM)
-app.put('/api/campaigns/:id', async (req, res) => {
+app.put('/api/campaigns/:id', requireAuth, /*requireDm,*/ async (req, res) => {
     try {
         const {title, description, schedule } = req.body;
 
@@ -286,7 +289,7 @@ app.put('/api/campaigns/:id', async (req, res) => {
 });
 
 // DELETE /api/campaigns/:id - Delete Campaign (TODO: Campaign's DM only)
-app.delete('/api/campaigns/:id', async (req, res) => {
+app.delete('/api/campaigns/:id', requireAuth, /*requireDm,*/ async (req, res) => {
     try {
         const deletedRowsCount = await Campaign.destroy({
             where: { campaignId: req.params.id }
@@ -308,9 +311,13 @@ app.delete('/api/campaigns/:id', async (req, res) => {
 
 // GET /api/my_characters - Currently returns all characters (Later to return only a User's characters)
 // TODO: adjust endpoint to require authentication
-app.get('/api/my_characters', /*requireAuth,*/ async (req, res) => {
+app.get('/api/my_characters', requireAuth, async (req, res) => {
     try{
-        const chars = await PlayerCharacter.findAll({});
+        const userId = req.user.userId;
+
+        const chars = await PlayerCharacter.findAll({
+            where: { userId }
+        });
 
         res.json(chars);
     } catch (error) {
@@ -319,7 +326,7 @@ app.get('/api/my_characters', /*requireAuth,*/ async (req, res) => {
     }
 });
 
-app.get('/api/my_characters/:id', /*requireAuth,*/ async (req, res) => {
+app.get('/api/my_characters/:id', requireAuth, /*requireOwner*/ async (req, res) => {
     try {
         const char = await PlayerCharacter.findByPk(req.params.id);
 
@@ -337,14 +344,16 @@ app.get('/api/my_characters/:id', /*requireAuth,*/ async (req, res) => {
 // TODO: Add POST, PUT, DELETE for PlayerCharacters
 
 // POST/ api/my_characters - create a new PlayerCharacter
-app.post('/api/my_characters', async (req, res) => {
+app.post('/api/my_characters', requireAuth, async (req, res) => {
     try{
+        const userId = req.user.userId
+
         const { 
             name, race, gender, primaryClass, primaryClassLevel,
             secondaryClass, secondaryClassLevel, tertiaryClass, 
             tertiaryClassLevel, constitution, strength, dexterity,
             intelligence, wisdom, charisma, armorClass, hp, inventory,
-            spellCasts, backstory, alignment, origin, userId
+            spellCasts, backstory, alignment, origin
         } = req.body;
 
         const newChar = await PlayerCharacter.create({
@@ -382,7 +391,7 @@ app.post('/api/my_characters', async (req, res) => {
 });
 
 // PUT /api/my_characters/:id - Update an existing character
-app.put('/api/my_characters/:id', async (req, res) => {
+app.put('/api/my_characters/:id', requireAuth, /*requireOwner,*/ async (req, res) => {
     try {
         const { 
             alive, name, race, gender, primaryClass, primaryClassLevel,
@@ -414,7 +423,7 @@ app.put('/api/my_characters/:id', async (req, res) => {
 });
 
 // DELETE /api/my_characters
-app.delete('/api/my_characters/:id', async (req, res) => {
+app.delete('/api/my_characters/:id', requireAuth, /*requireOwner*/ async (req, res) => {
     try {
         const deletedRowsCount = await PlayerCharacter.destroy({
             where: { charId: req.params.id }
@@ -434,7 +443,7 @@ app.delete('/api/my_characters/:id', async (req, res) => {
 
 
 // CAMPAINGNOTE/CAMPAIGNNOTETHREAD ROUTES
-app.get('/api/campaign_notes', async (req, res) => {
+app.get('/api/campaign_notes', requireAuth, async (req, res) => {
     try {
         const threads = await CampaignNoteThread.findAll({
             include: [
@@ -451,7 +460,7 @@ app.get('/api/campaign_notes', async (req, res) => {
     }
 });
 
-app.get('/api/campaign_notes/:thread_id', async (req, res) => {
+app.get('/api/campaign_notes/:thread_id', requireAuth, async (req, res) => {
     try {
         const thread = await CampaignNoteThread.findByPk(req.params.thread_id, {
             include: [
@@ -473,7 +482,7 @@ app.get('/api/campaign_notes/:thread_id', async (req, res) => {
 });
 
 // POST /api/campaign_notes/:thread_id
-app.post('/api/campaign_notes/:thread_id', async (req, res) => {
+app.post('/api/campaign_notes/:thread_id', requireAuth, async (req, res) => {
     try {
         thread = await CampaignNoteThread.findByPk(req.params.thread_id);
 
@@ -498,7 +507,7 @@ app.post('/api/campaign_notes/:thread_id', async (req, res) => {
 });
 
 // PUT /api/campaign_notes/:id
-app.put('/api/campaign_notes/:id', async (req, res) => {
+app.put('/api/campaign_notes/:id', requireAuth, async (req, res) => {
     try {
         const { content } = req.body;
 
@@ -520,7 +529,7 @@ app.put('/api/campaign_notes/:id', async (req, res) => {
 });
 
 // DELETE /api/campaign_notes/:id
-app.delete('/api/campaign_notes/:id', async (req, res) => {
+app.delete('/api/campaign_notes/:id', requireAuth, async (req, res) => {
     try {
         const deletedRowsCount = await CampaignNote.destroy({
             where: { noteId: req.params.id }
@@ -538,7 +547,7 @@ app.delete('/api/campaign_notes/:id', async (req, res) => {
 });
 
 // POST /api/campaign_note_thread
-app.post('/api/campaign_note_thread/:campaign_id', async (req, res) => {
+app.post('/api/campaign_note_thread/:campaign_id', requireAuth, async (req, res) => {
     try {
         campaign = Campaign.findByPk(req.params.campaign_id);
 
@@ -560,7 +569,7 @@ app.post('/api/campaign_note_thread/:campaign_id', async (req, res) => {
     }
 });
 
-app.put('/api/campaign_note_thread/:id', async (req, res) => {
+app.put('/api/campaign_note_thread/:id', requireAuth, async (req, res) => {
     try {
         const { toCharacter } = req.body;
 
@@ -581,7 +590,7 @@ app.put('/api/campaign_note_thread/:id', async (req, res) => {
     }
 });
 
-app.delete('/api/campaign_note_thread/:id', async (req, res) => {
+app.delete('/api/campaign_note_thread/:id', requireAuth, async (req, res) => {
     try {
         const deletedRowsCount = await CampaignNoteThread.destroy({
             where: {threadId: req.params.id }
@@ -599,7 +608,7 @@ app.delete('/api/campaign_note_thread/:id', async (req, res) => {
 })
 
 // PARTYMESSAGE ROUTES
-app.get('/api/party_messages', async (req, res) => {
+app.get('/api/party_messages', requireAuth, async (req, res) => {
     try {
         const messages = await PartyMessage.findAll();
 
@@ -610,7 +619,7 @@ app.get('/api/party_messages', async (req, res) => {
     }
 });
 
-app.get('/api/party_messages/:campaign_id', async (req, res) => {
+app.get('/api/party_messages/:campaign_id', requireAuth, async (req, res) => {
     try {
         const campaign = await Campaign.findByPk(req.params.campaign_id);
         
@@ -634,7 +643,7 @@ app.get('/api/party_messages/:campaign_id', async (req, res) => {
 });
 
 // POST /api/party_messages/:campaign_id
-app.post('/api/party_messages/:campaign_id', async (req, res) => {
+app.post('/api/party_messages/:campaign_id', requireAuth, async (req, res) => {
     try {
         const campaign = await Campaign.findByPk(req.params.campaign_id);
 
@@ -659,7 +668,7 @@ app.post('/api/party_messages/:campaign_id', async (req, res) => {
 });
 
 // PUT /api/party_messages/:id
-app.put('/api/party_messages/:id', async (req, res) => {
+app.put('/api/party_messages/:id', requireAuth, async (req, res) => {
     try {
         const { content } = req.body;
 
@@ -681,7 +690,7 @@ app.put('/api/party_messages/:id', async (req, res) => {
 });
 
 // DELETE /api/party_messages/:id
-app.delete('/api/party_messages/:id', async (req, res) => {
+app.delete('/api/party_messages/:id', requireAuth, async (req, res) => {
     try {
         const deletedRowsCount = await PartyMessage.destroy({
             where: { messageId: req.params.id }
