@@ -42,6 +42,30 @@ function requireAuth(req, res, next) {
     }
 }
 
+// Requires a User to be a given Campaign's dm
+async function requireDm(req, res, next) {
+    try {
+        const userId = req.user.userId;
+
+        // Retrieve DM userId from campaign
+        const reqCampaign = await Campaign.findByPk(req.params.campaign_id);
+        const campaignDmId = reqCampaign.userId;
+
+        // Check if User is campaign's dm
+        if (userId == campaignDmId) {
+            next();
+        }
+        else {
+            return res.status(403).json({
+                    error: "Must be Campaign DM to access this resource"
+                });
+        }
+    } catch (error) {
+        console.error('DM check failed:', error);
+        res.status(500).json({ error: 'Failed to check DM status' });
+    }
+}
+
 // Request logging middleware
 const requestLogger = (req, res, next) => {
     const timestamp = new Date().toISOString();
@@ -51,7 +75,6 @@ const requestLogger = (req, res, next) => {
     if (req.method === 'POST' || req.method === 'PUT') {
         console.log('Request Body:', JSON.stringify(req.body, null, 2));
     }
-
     next();
 }
 
@@ -73,8 +96,6 @@ async function testConnection() {
 }
 
 testConnection();
-
-// TODO: Add authentication routes
 
 // POST /api/register - Register new user
 app.post('/api/register', async (req, res) => {
@@ -267,20 +288,20 @@ app.post('/api/campaigns', requireAuth, async (req, res) => {
 });
 
 // PUT /api/campaigns/:id - Update campaign (TODO: Only allow campaign's DM)
-app.put('/api/campaigns/:id', requireAuth, /*requireDm,*/ async (req, res) => {
+app.put('/api/campaigns/:campaign_id', requireAuth, requireDm, async (req, res) => {
     try {
         const {title, description, schedule } = req.body;
 
         const [updatedRowsCount] = await Campaign.update(
             { title, description, schedule },
-            { where: { campaignId: req.params.id } }
+            { where: { campaignId: req.params.campaign_id } }
         );
 
         if (updatedRowsCount === 0) {
             return res.status(404).json({ error: 'Campaign not found' });
         }
 
-        const updatedCampaign = await Campaign.findByPk(req.params.id);
+        const updatedCampaign = await Campaign.findByPk(req.params.campaign_id);
         res.json(updatedCampaign);
     } catch (error) {
         console.error('Error updating campaign:', error);
@@ -289,10 +310,10 @@ app.put('/api/campaigns/:id', requireAuth, /*requireDm,*/ async (req, res) => {
 });
 
 // DELETE /api/campaigns/:id - Delete Campaign (TODO: Campaign's DM only)
-app.delete('/api/campaigns/:id', requireAuth, /*requireDm,*/ async (req, res) => {
+app.delete('/api/campaigns/:campaign_id', requireAuth, requireDm, async (req, res) => {
     try {
         const deletedRowsCount = await Campaign.destroy({
-            where: { campaignId: req.params.id }
+            where: { campaignId: req.params.campaign_id }
         });
 
         if (deletedRowsCount === 0) {
