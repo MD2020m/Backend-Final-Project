@@ -10,6 +10,22 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 
 // JWT authentication middleware
+
+// Check that campaign exists
+async function checkCampaign(req, res, next) {
+    const campaign = await Campaign.findByPk(req.params.campaign_id);
+
+    if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+    }
+
+    else {
+        req.campaign = campaign
+        next();
+    }
+}
+
+// Require User authentication
 function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
 
@@ -43,14 +59,16 @@ function requireAuth(req, res, next) {
 }
 
 // Requires a User to be a given Campaign's dm
-async function requireDm(req, res, next) {
+function requireDm(req, res, next) {
     try {
         const userId = req.user.userId;
 
         // Retrieve DM userId from campaign
-        const reqCampaign = await Campaign.findByPk(req.params.campaign_id);
-        const campaignDmId = reqCampaign.userId;
+        //const reqCampaign = req.campaign;
+        const campaignDmId = req.campaign.userId;
 
+        //console.log(userId);
+        //console.log(campaignDmId);
         // Check if User is campaign's dm
         if (userId == campaignDmId) {
             next();
@@ -63,6 +81,33 @@ async function requireDm(req, res, next) {
     } catch (error) {
         console.error('DM check failed:', error);
         res.status(500).json({ error: 'Failed to check DM status' });
+    }
+}
+
+async function requireOwner(req, res, next) {
+    try{
+        playerCharacter = await PlayerCharacter.findByPk(req.params.char_id);
+
+        if(playerCharacter) {
+            console.log(playerCharacter);
+            console.log(playerCharacter.userId);
+            console.log(req.user.userId);
+        }
+
+        if (!playerCharacter) {
+            return res.status(404).json({ error: "Player Character not fount" });
+        }
+
+        else if (req.user.userId == playerCharacter.userId) {
+            next();
+        }
+
+        else{
+            return res.status(403).json({ error: 'You are not authorized to view this resource' });
+        }
+    } catch (error) {
+        console.error('Player check failed:', error);
+        res.status(500).json({ error: 'Failed to check Player status' });
     }
 }
 
@@ -231,9 +276,9 @@ app.get('/api/campaigns', requireAuth, async (req, res) => {
 // GET /api/campaing/:id - Return a Campaign by id
 
 // TODO: Get endpoint to return info about characters and players involved
-app.get('/api/campaigns/:id', requireAuth, async (req, res) => {
+app.get('/api/campaigns/:campaign_id', requireAuth, async (req, res) => {
     try {
-        const campaign = await Campaign.findByPk(req.params.id, {
+        const campaign = await Campaign.findByPk(req.params.campaign_id, {
             include: [
                 {
                     model: User,
@@ -288,7 +333,7 @@ app.post('/api/campaigns', requireAuth, async (req, res) => {
 });
 
 // PUT /api/campaigns/:id - Update campaign (TODO: Only allow campaign's DM)
-app.put('/api/campaigns/:campaign_id', requireAuth, requireDm, async (req, res) => {
+app.put('/api/campaigns/:campaign_id', requireAuth, checkCampaign, requireDm, async (req, res) => {
     try {
         const {title, description, schedule } = req.body;
 
@@ -347,9 +392,9 @@ app.get('/api/my_characters', requireAuth, async (req, res) => {
     }
 });
 
-app.get('/api/my_characters/:id', requireAuth, /*requireOwner*/ async (req, res) => {
+app.get('/api/my_characters/:char_id', requireAuth, /*requireOwner*/ async (req, res) => {
     try {
-        const char = await PlayerCharacter.findByPk(req.params.id);
+        const char = await PlayerCharacter.findByPk(req.params.char_id);
 
         if (!char) {
             return res.status(404).json({ error: 'Player Character not found' });
@@ -412,7 +457,7 @@ app.post('/api/my_characters', requireAuth, async (req, res) => {
 });
 
 // PUT /api/my_characters/:id - Update an existing character
-app.put('/api/my_characters/:id', requireAuth, /*requireOwner,*/ async (req, res) => {
+app.put('/api/my_characters/:char_id', requireAuth, requireOwner, async (req, res) => {
     try {
         const { 
             alive, name, race, gender, primaryClass, primaryClassLevel,
@@ -428,14 +473,14 @@ app.put('/api/my_characters/:id', requireAuth, /*requireOwner,*/ async (req, res
             tertiaryClassLevel, constitution, strength, dexterity,
             intelligence, wisdom, charisma, armorClass, hp, inventory,
             spellCasts, backstory, alignment, origin, userId, campaignId },
-            { where: { charId: req.params.id }}
+            { where: { charId: req.params.char_id }}
         );
 
         if (updatedRowsCount === 0) {
             return res.status(404).json({ error: 'Player character not found' });
         }
 
-        const updatedChar = await PlayerCharacter.findByPk(req.params.id);
+        const updatedChar = await PlayerCharacter.findByPk(req.params.char_id);
         res.json(updatedChar);
     } catch (error) {
         console.error('Error updating character:', error);
@@ -444,10 +489,10 @@ app.put('/api/my_characters/:id', requireAuth, /*requireOwner,*/ async (req, res
 });
 
 // DELETE /api/my_characters
-app.delete('/api/my_characters/:id', requireAuth, /*requireOwner*/ async (req, res) => {
+app.delete('/api/my_characters/:char_id', requireAuth, requireOwner, async (req, res) => {
     try {
         const deletedRowsCount = await PlayerCharacter.destroy({
-            where: { charId: req.params.id }
+            where: { charId: req.params.char_id }
         });
 
         if (deletedRowsCount === 0) {
@@ -528,20 +573,20 @@ app.post('/api/campaign_notes/:thread_id', requireAuth, async (req, res) => {
 });
 
 // PUT /api/campaign_notes/:id
-app.put('/api/campaign_notes/:id', requireAuth, async (req, res) => {
+app.put('/api/campaign_notes/:note_id', requireAuth, async (req, res) => {
     try {
         const { content } = req.body;
 
         const [updatedRowsCount] = await CampaignNote.update(
             { content },
-            { where: { noteId: req.params.id } }
+            { where: { noteId: req.params.note_id } }
         );
 
         if (updatedRowsCount === 0) {
             return res.status(404).json({ error: 'Campaing note not found' });
         }
 
-        const updatedNote = await CampaignNote.findByPk(req.params.id);
+        const updatedNote = await CampaignNote.findByPk(req.params.note_id);
         res.json(updatedNote);
     } catch (error) {
         console.error('Error updating campaign note:', error);
@@ -550,10 +595,10 @@ app.put('/api/campaign_notes/:id', requireAuth, async (req, res) => {
 });
 
 // DELETE /api/campaign_notes/:id
-app.delete('/api/campaign_notes/:id', requireAuth, async (req, res) => {
+app.delete('/api/campaign_notes/:note_id', requireAuth, async (req, res) => {
     try {
         const deletedRowsCount = await CampaignNote.destroy({
-            where: { noteId: req.params.id }
+            where: { noteId: req.params.note_id }
         });
 
         if (deletedRowsCount === 0) {
@@ -568,13 +613,13 @@ app.delete('/api/campaign_notes/:id', requireAuth, async (req, res) => {
 });
 
 // POST /api/campaign_note_thread
-app.post('/api/campaign_note_thread/:campaign_id', requireAuth, async (req, res) => {
+app.post('/api/campaign_note_thread/:campaign_id', requireAuth, checkCampaign, async (req, res) => {
     try {
-        campaign = Campaign.findByPk(req.params.campaign_id);
-
-        if (!campaign) {
-            return res.status(404).json({ error: 'Campaign not found' });
-        }
+        //campaign = Campaign.findByPk(req.params.campaign_id);
+//
+        //if (!campaign) {
+        //    return res.status(404).json({ error: 'Campaign not found' });
+        //}
 
         const { toCharacter } = req.body;
 
