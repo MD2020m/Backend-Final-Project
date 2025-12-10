@@ -216,7 +216,7 @@ app.post('/api/login', async (req, res) => {
         const token = jwt.sign(
             {
                 userId: user.userId,
-                username: user.username
+                username: user.username,
             },
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN }
@@ -241,6 +241,38 @@ app.post('/api/login', async (req, res) => {
 
 // TODO: Adjust this endpoint to return only campaigns a user is involved in
 // GET /api/campaigns - Return all campaigns
+
+// Test endpoint to see what I get from it:
+app.get('/api/player/campaigns', requireAuth, async (req, res) => {
+    try {
+        const chars = await PlayerCharacter.findAll({
+            where: {userId: req.user.userId },
+            attributes: ["campaignId"]
+        });
+
+        console.log(chars.length)
+        console.log(chars[0]["campaignId"]);
+
+        campaignIds = []
+
+        for (let i = 0; i < chars.length; i++) {
+            campaignIds.push(chars[i]["campaignId"]);
+        }
+
+        console.log(campaignIds);
+
+        const campaigns = await Campaign.findAll({
+            where: {
+                campaignId: campaignIds
+            }
+        })
+
+        res.json(campaigns);
+    } catch (error) {
+        console.error("It didn't work:", error);
+        res.status(500).json({ error: "It didn't work" });
+    }
+})
 
 // TODO: Get endpoint to return info about players and characters involved
 app.get('/api/campaigns', requireAuth, async (req, res) => {
