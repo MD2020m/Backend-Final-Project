@@ -111,6 +111,44 @@ async function requireOwner(req, res, next) {
     }
 }
 
+async function requireParticipant(req, res, next) {
+    try {
+        campaign = req.campaign;
+
+        if (campaign.userId == req.user.userId) {
+            next();
+        }
+
+        else {
+            players = await PlayerCharacter.findAll({
+                where: { campaignId: campaign.campaignId },
+                attributes: ["userId"]
+            });
+
+            playerUsers = []
+            for (let i = 0; i < players.length; i++) {
+                playerUsers.push(players[i]["userId"]);
+            }
+
+            //console.log(req.user.userId);
+            //console.log(playerUsers);
+            //console.log(playerUsers.includes(req.user.userId));
+            if (playerUsers.includes(req.user.userId)) {
+                next();
+            }
+
+            else {
+                return res.status(403).json({
+                    message: "Must be campaign participant to access this resource"
+                });
+            }
+        }
+    } catch (error) {
+        console.error("Error checking participant status:", error);
+        res.status(500).json({ error: "Failed to check participant status" });
+    }
+}
+
 // Request logging middleware
 const requestLogger = (req, res, next) => {
     const timestamp = new Date().toISOString();
@@ -242,7 +280,7 @@ app.post('/api/login', async (req, res) => {
 // TODO: Adjust this endpoint to return only campaigns a user is involved in
 // GET /api/campaigns - Return all campaigns
 
-// Test endpoint to see what I get from it:
+// GET endpoint to return all campaigns a User plays a character in
 app.get('/api/player/campaigns', requireAuth, async (req, res) => {
     try {
         const chars = await PlayerCharacter.findAll({
@@ -250,8 +288,8 @@ app.get('/api/player/campaigns', requireAuth, async (req, res) => {
             attributes: ["campaignId"]
         });
 
-        console.log(chars.length)
-        console.log(chars[0]["campaignId"]);
+        //console.log(chars.length)
+        //console.log(chars[0]["campaignId"]);
 
         campaignIds = []
 
@@ -259,7 +297,7 @@ app.get('/api/player/campaigns', requireAuth, async (req, res) => {
             campaignIds.push(chars[i]["campaignId"]);
         }
 
-        console.log(campaignIds);
+        //console.log(campaignIds);
 
         const campaigns = await Campaign.findAll({
             where: {
@@ -272,7 +310,21 @@ app.get('/api/player/campaigns', requireAuth, async (req, res) => {
         console.error("It didn't work:", error);
         res.status(500).json({ error: "It didn't work" });
     }
-})
+});
+
+// GET endpoint to return all Campaigns a User DMs
+app.get('/api/dm/campaigns', requireAuth, async (req, res) => {
+    try {
+        const campaigns = await Campaign.findAll({
+            where: { userId: req.user.userId }
+        });
+
+        res.json(campaigns);
+    } catch (error) {
+        console.error("Error fetching campaigns:", error);
+        res.status(500).json({ error: 'Failed to fetch campaigns' });
+    }
+});
 
 // TODO: Get endpoint to return info about players and characters involved
 app.get('/api/campaigns', requireAuth, async (req, res) => {
@@ -308,7 +360,7 @@ app.get('/api/campaigns', requireAuth, async (req, res) => {
 // GET /api/campaing/:id - Return a Campaign by id
 
 // TODO: Get endpoint to return info about characters and players involved
-app.get('/api/campaigns/:campaign_id', requireAuth, async (req, res) => {
+app.get('/api/campaigns/:campaign_id', requireAuth, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const campaign = await Campaign.findByPk(req.params.campaign_id, {
             include: [
