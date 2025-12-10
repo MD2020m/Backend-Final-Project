@@ -439,7 +439,7 @@ app.put('/api/campaigns/:campaign_id', requireAuth, checkCampaign, requireDm, as
 });
 
 // DELETE /api/campaigns/:id - Delete Campaign (TODO: Campaign's DM only)
-app.delete('/api/campaigns/:campaign_id', requireAuth, requireDm, async (req, res) => {
+app.delete('/api/campaigns/:campaign_id', requireAuth, checkCampaign, requireDm, async (req, res) => {
     try {
         const deletedRowsCount = await Campaign.destroy({
             where: { campaignId: req.params.campaign_id }
@@ -476,7 +476,7 @@ app.get('/api/my_characters', requireAuth, async (req, res) => {
     }
 });
 
-app.get('/api/my_characters/:char_id', requireAuth, /*requireOwner*/ async (req, res) => {
+app.get('/api/my_characters/:char_id', requireAuth, requireOwner, async (req, res) => {
     try {
         const char = await PlayerCharacter.findByPk(req.params.char_id);
 
@@ -719,20 +719,20 @@ app.post('/api/campaign_note_thread/:campaign_id', requireAuth, checkCampaign, a
     }
 });
 
-app.put('/api/campaign_note_thread/:id', requireAuth, async (req, res) => {
+app.put('/api/campaign_note_thread/:thread_id', requireAuth, async (req, res) => {
     try {
         const { toCharacter } = req.body;
 
         const [updatedRowsCount] = await CampaignNoteThread.update(
             { toCharacter },
-            { where: { threadId: req.params.id } }
+            { where: { threadId: req.params.thread_id } }
         );
 
         if (updatedRowsCount === 0) {
             return res.status(404).json({ error: 'Campaign note thread not found' });
         }
 
-        const updatedThread = await CampaignNoteThread.findByPk(req.params.id);
+        const updatedThread = await CampaignNoteThread.findByPk(req.params.thread_id);
         res.json(updatedThread);
     } catch (error) {
         console.error('Error updating thread:', error);
@@ -740,10 +740,10 @@ app.put('/api/campaign_note_thread/:id', requireAuth, async (req, res) => {
     }
 });
 
-app.delete('/api/campaign_note_thread/:id', requireAuth, async (req, res) => {
+app.delete('/api/campaign_note_thread/:thread_id', requireAuth, async (req, res) => {
     try {
         const deletedRowsCount = await CampaignNoteThread.destroy({
-            where: {threadId: req.params.id }
+            where: {threadId: req.params.thread_id }
         });
 
         if (deletedRowsCount === 0) {
@@ -769,7 +769,7 @@ app.get('/api/party_messages', requireAuth, async (req, res) => {
     }
 });
 
-app.get('/api/party_messages/:campaign_id', requireAuth, async (req, res) => {
+app.get('/api/party_messages/:campaign_id', requireAuth, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const campaign = await Campaign.findByPk(req.params.campaign_id);
         
@@ -793,7 +793,7 @@ app.get('/api/party_messages/:campaign_id', requireAuth, async (req, res) => {
 });
 
 // POST /api/party_messages/:campaign_id
-app.post('/api/party_messages/:campaign_id', requireAuth, async (req, res) => {
+app.post('/api/party_messages/:campaign_id', requireAuth, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const campaign = await Campaign.findByPk(req.params.campaign_id);
 
@@ -818,20 +818,20 @@ app.post('/api/party_messages/:campaign_id', requireAuth, async (req, res) => {
 });
 
 // PUT /api/party_messages/:id
-app.put('/api/party_messages/:id', requireAuth, async (req, res) => {
+app.put('/api/party_messages/:message_id', requireAuth, async (req, res) => {
     try {
         const { content } = req.body;
 
         const [updatedRowsCount] = await PartyMessage.update(
             { content },
-            { where: { messageId: req.params.id } }
+            { where: { messageId: req.params.nessage_id } }
         );
 
         if (updatedRowsCount === 0) {
             return res.status(404).json({ error: 'Party message not found' });
         }
 
-        const updatedMessage = await PartyMessage.findByPk(req.params.id);
+        const updatedMessage = await PartyMessage.findByPk(req.params.message_id);
         res.json(updatedMessage);
     } catch (error) {
         console.error('Error updating party message:', error);
@@ -843,7 +843,7 @@ app.put('/api/party_messages/:id', requireAuth, async (req, res) => {
 app.delete('/api/party_messages/:id', requireAuth, async (req, res) => {
     try {
         const deletedRowsCount = await PartyMessage.destroy({
-            where: { messageId: req.params.id }
+            where: { messageId: req.params.message_id }
         });
 
         if (deletedRowsCount === 0) {
