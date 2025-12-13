@@ -13,15 +13,20 @@ const PORT = process.env.PORT || 3000;
 
 // Check that campaign exists
 async function checkCampaign(req, res, next) {
-    const campaign = await Campaign.findByPk(req.params.campaign_id);
+    try {
+        const campaign = await Campaign.findByPk(req.params.campaign_id);
 
-    if (!campaign) {
-        return res.status(404).json({ error: "Campaign not found" });
-    }
+        if (!campaign) {
+            return res.status(404).json({ error: "Campaign not found" });
+        }
 
-    else {
-        req.campaign = campaign
-        next();
+        else {
+            req.campaign = campaign
+            next();
+        }
+    } catch (error) {
+        console.error("Error checking campaign:", error);
+        res.status(500).json("Error checking campaign id");
     }
 }
 
@@ -327,34 +332,34 @@ app.get('/api/dm/campaigns', requireAuth, async (req, res) => {
 });
 
 // TODO: Get endpoint to return info about players and characters involved
-app.get('/api/campaigns', requireAuth, async (req, res) => {
-    try {
-        const campaigns = await Campaign.findAll({
-            include: [
-                {
-                    model: User,
-                    as: 'dungeonMaster',
-                    attributes: ['userId','username']
-                },
-                {
-                    model: PlayerCharacter,
-                    attributes: ['charId','alive','name','race','gender'],
-                    include: [
-                        {
-                            model: User,
-                            attributes: ['userId','username']
-                        }
-                    ]
-                }
-            ]
-        });
-
-        res.json(campaigns);
-    } catch (error) {
-        console.error('Error fetching campaigns:', error);
-        res.status(500).json({ error: 'Failed to fetch campaigns' });
-    }
-});
+//app.get('/api/campaigns', requireAuth, async (req, res) => {
+//    try {
+//        const campaigns = await Campaign.findAll({
+//            include: [
+//                {
+//                    model: User,
+//                    as: 'dungeonMaster',
+//                    attributes: ['userId','username']
+//                },
+//                {
+//                    model: PlayerCharacter,
+//                    attributes: ['charId','alive','name','race','gender'],
+//                    include: [
+//                        {
+//                            model: User,
+//                            attributes: ['userId','username']
+//                        }
+//                    ]
+//                }
+//            ]
+//        });
+//
+//        res.json(campaigns);
+//    } catch (error) {
+//        console.error('Error fetching campaigns:', error);
+//        res.status(500).json({ error: 'Failed to fetch campaigns' });
+//    }
+//});
 
 // TODO: Adjust this endpoint to require authorization to view the campaign
 // GET /api/campaing/:id - Return a Campaign by id
@@ -367,17 +372,8 @@ app.get('/api/campaigns/:campaign_id', requireAuth, checkCampaign, requirePartic
                 {
                     model: User,
                     as: 'dungeonMaster',
-                    attributes: ['userId','username']
-                },
-                {
-                    model: PlayerCharacter,
-                    attributes: ['charId','alive','name'],
-                    include: [
-                        {
-                            model: User,
-                            attributes: ['userId','username']
-                        }
-                    ]
+                    attributes: ["username"]
+
                 }
             ]
         })
@@ -458,6 +454,73 @@ app.delete('/api/campaigns/:campaign_id', requireAuth, checkCampaign, requireDm,
 
 
 // PLAYERCHARACTER ROUTES 
+
+// GET /api/dm/:campaign_id/characters
+app.get('/api/dm/:campaign_id/characters', requireAuth, checkCampaign, requireDm, async (req, res) => {
+    try {
+        const characters = await PlayerCharacter.findAll({
+            where: { campaignId: req.params.campaign_id }
+        });
+
+        res.json(characters);
+    } catch (error) {
+        console.error("Error fetching player characters:", error);
+        res.status(500).json({ error: "Failed to fetch player characters" });
+    }
+});
+
+// GET /api/dm/:campaign_id/characters/:character_id
+app.get('/api/dm/:campaign_id/characters/:character_id', requireAuth, checkCampaign, requireDm, async (req, res) => {
+    try {
+        console.log(req.params.character_id);
+
+        const character = await PlayerCharacter.findByPk(req.params.character_id);
+
+        if (character.campaignId == req.params.campaign_id) {
+            return res.json(character);
+        }
+
+        else {
+            res.status(404).json({ error: "Player character is not in the specified campaign" });
+        }
+    } catch (error) {
+        console.error('Error fetching player character', error);
+        res.status(500).json({ error: "Failed to fetch player character" });
+    }
+});
+
+app.get('/api/player/:campaign_id/characters', requireAuth, checkCampaign, requireParticipant, async (req, res) => {
+    try {
+        const characters = await PlayerCharacter.findAll({
+            where: {campaignId: req.params.campaign_id},
+            attributes: ["name", "race", "gender", "userId"]
+        });
+
+        res.json(characters);
+    } catch (error) {
+        console.error("Error fetching player characters", error);
+        res.status(500).json({ error: "Failed to fetch player characters" });
+    }
+});
+
+app.get('/api/player/:campaign_id/characters/:character_id', requireAuth, checkCampaign, requireParticipant, async (req, res) => {
+    try {
+        const character = await PlayerCharacter.findByPk(req.params.character_id);
+
+        console.log(character.campaignId);
+        console.log(req.params.campaign_id);
+
+        if (character.campaignId == req.params.campaign_id) {
+            res.json(character);
+        }
+        else {
+            res.status(404).json({error: "Character is not in specified campaign"});
+        }
+    } catch (error) {
+        console.error("Error fetching player character");
+        res.status(500).json({ error: "Error fetching player character" });
+    }
+})
 
 // GET /api/my_characters - Currently returns all characters (Later to return only a User's characters)
 // TODO: adjust endpoint to require authentication
