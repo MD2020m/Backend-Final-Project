@@ -154,6 +154,29 @@ async function requireParticipant(req, res, next) {
     }
 }
 
+async function requireAuthor(req, res, next) {
+    try {
+        const note = await PartyMessage.findByPk(req.params.message_id);
+
+        if (!note) {
+            res.status(404).json({ error: "Message not found" });
+        }
+        console.log(req.user.userId);
+        console.log(note.userId);
+
+        if (req.user.userId == note.userId) {
+            next();
+        }
+
+        else {
+            res.status(403).json("Must be note author to edit or delete note");
+        } 
+    } catch (error) {
+        console.error("Error cheking author status:", error);
+        res.status(500).json({error: "Failed to check author status"});
+    }
+}
+
 // Request logging middleware
 const requestLogger = (req, res, next) => {
     const timestamp = new Date().toISOString();
@@ -656,169 +679,169 @@ app.delete('/api/my_characters/:char_id', requireAuth, requireOwner, async (req,
 
 
 // CAMPAINGNOTE/CAMPAIGNNOTETHREAD ROUTES
-app.get('/api/campaign_notes', requireAuth, async (req, res) => {
-    try {
-        const threads = await CampaignNoteThread.findAll({
-            include: [
-                {
-                    model: CampaignNote
-                }
-            ]
-        });
-
-        res.json(threads);
-    } catch (error) {
-        console.error('Error fetching Campaign Note Threads:', error);
-        res.status(500).json({ error: 'Failed to fetch campaign note threads'});
-    }
-});
-
-app.get('/api/campaign_notes/:thread_id', requireAuth, async (req, res) => {
-    try {
-        const thread = await CampaignNoteThread.findByPk(req.params.thread_id, {
-            include: [
-                {
-                    model: CampaignNote
-                }
-            ]
-        });
-
-        if (!thread) {
-            return res.status(404).json({ message: 'Campaign note thread not found' });
-        }
-
-        res.json(thread);
-    } catch (error) {
-        console.error('Failed to fetch campaign note thread:', error);
-        res.status(500).json({ error: 'Failed to fetch campaign note thread' });
-    }
-});
-
-// POST /api/campaign_notes/:thread_id
-app.post('/api/campaign_notes/:thread_id', requireAuth, async (req, res) => {
-    try {
-        thread = await CampaignNoteThread.findByPk(req.params.thread_id);
-
-        if (!thread) {
-            return res.status(404).json({ error: 'Campaign note thread not found' });
-        }
-
-        const { content, userId } = req.body;
-
-        newNote = await CampaignNote.create({
-            content,
-            timePosted: require('sequelize').literal('CURRENT_TIMESTAMP'),
-            userId,
-            threadId: req.params.thread_id
-        });
-
-        res.status(201).json(newNote);
-    } catch (error) {
-        console.error('Error creating campaign note:', error);
-        res.status(500).json({ error: 'Failed to create campaign note' });
-    }
-});
-
-// PUT /api/campaign_notes/:id
-app.put('/api/campaign_notes/:note_id', requireAuth, async (req, res) => {
-    try {
-        const { content } = req.body;
-
-        const [updatedRowsCount] = await CampaignNote.update(
-            { content },
-            { where: { noteId: req.params.note_id } }
-        );
-
-        if (updatedRowsCount === 0) {
-            return res.status(404).json({ error: 'Campaing note not found' });
-        }
-
-        const updatedNote = await CampaignNote.findByPk(req.params.note_id);
-        res.json(updatedNote);
-    } catch (error) {
-        console.error('Error updating campaign note:', error);
-        res.status(500).json({ error: 'Failed to update campaign note' });
-    }
-});
-
-// DELETE /api/campaign_notes/:id
-app.delete('/api/campaign_notes/:note_id', requireAuth, async (req, res) => {
-    try {
-        const deletedRowsCount = await CampaignNote.destroy({
-            where: { noteId: req.params.note_id }
-        });
-
-        if (deletedRowsCount === 0) {
-            return res.status(404).json({ error: 'Campaign note not found' });
-        }
-
-        res.json({ message: 'Campaign note deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting campaign note:', error);
-        res.status(500).json({ error: 'Failed to delete campaign note.' });
-    }
-});
-
-// POST /api/campaign_note_thread
-app.post('/api/campaign_note_thread/:campaign_id', requireAuth, checkCampaign, async (req, res) => {
-    try {
-        //campaign = Campaign.findByPk(req.params.campaign_id);
+//app.get('/api/campaign_notes', requireAuth, async (req, res) => {
+//    try {
+//        const threads = await CampaignNoteThread.findAll({
+//            include: [
+//                {
+//                    model: CampaignNote
+//                }
+//            ]
+//        });
 //
-        //if (!campaign) {
-        //    return res.status(404).json({ error: 'Campaign not found' });
-        //}
-
-        const { toCharacter } = req.body;
-
-        const newThread = await CampaignNoteThread.create({
-            toCharacter,
-            campaignId: req.params.campaign_id
-        });
-
-        res.status(201).json(newThread);
-    } catch (error) {
-        console.error('Error creating campaign note thread:', error);
-        res.status(500).json({ error: 'Failed to create campaign note thread' });
-    }
-});
-
-app.put('/api/campaign_note_thread/:thread_id', requireAuth, async (req, res) => {
-    try {
-        const { toCharacter } = req.body;
-
-        const [updatedRowsCount] = await CampaignNoteThread.update(
-            { toCharacter },
-            { where: { threadId: req.params.thread_id } }
-        );
-
-        if (updatedRowsCount === 0) {
-            return res.status(404).json({ error: 'Campaign note thread not found' });
-        }
-
-        const updatedThread = await CampaignNoteThread.findByPk(req.params.thread_id);
-        res.json(updatedThread);
-    } catch (error) {
-        console.error('Error updating thread:', error);
-        res.status(500).json({ error: 'Failed to update campaign note thread' });
-    }
-});
-
-app.delete('/api/campaign_note_thread/:thread_id', requireAuth, async (req, res) => {
-    try {
-        const deletedRowsCount = await CampaignNoteThread.destroy({
-            where: {threadId: req.params.thread_id }
-        });
-
-        if (deletedRowsCount === 0) {
-            return res.status(404).json({ error: 'Thread not found' });
-        }
-
-        res.json({ message: 'Campaign note thread deleted successfully' });
-    } catch (error) {
-        console.error('Error deleteing campaign note thread:', error);
-        res.status(500).json({ error: 'Failed to delete campaign note thread' });
-    }
-})
+//        res.json(threads);
+//    } catch (error) {
+//        console.error('Error fetching Campaign Note Threads:', error);
+//        res.status(500).json({ error: 'Failed to fetch campaign note threads'});
+//    }
+//});
+//
+//app.get('/api/campaign_notes/:thread_id', requireAuth, async (req, res) => {
+//    try {
+//        const thread = await CampaignNoteThread.findByPk(req.params.thread_id, {
+//            include: [
+//                {
+//                    model: CampaignNote
+//                }
+//            ]
+//        });
+//
+//        if (!thread) {
+//            return res.status(404).json({ message: 'Campaign note thread not found' });
+//        }
+//
+//        res.json(thread);
+//    } catch (error) {
+//        console.error('Failed to fetch campaign note thread:', error);
+//        res.status(500).json({ error: 'Failed to fetch campaign note thread' });
+//    }
+//});
+//
+//// POST /api/campaign_notes/:thread_id
+//app.post('/api/campaign_notes/:thread_id', requireAuth, async (req, res) => {
+//    try {
+//        thread = await CampaignNoteThread.findByPk(req.params.thread_id);
+//
+//        if (!thread) {
+//            return res.status(404).json({ error: 'Campaign note thread not found' });
+//        }
+//
+//        const { content, userId } = req.body;
+//
+//        newNote = await CampaignNote.create({
+//            content,
+//            timePosted: require('sequelize').literal('CURRENT_TIMESTAMP'),
+//            userId,
+//            threadId: req.params.thread_id
+//        });
+//
+//        res.status(201).json(newNote);
+//    } catch (error) {
+//        console.error('Error creating campaign note:', error);
+//        res.status(500).json({ error: 'Failed to create campaign note' });
+//    }
+//});
+//
+//// PUT /api/campaign_notes/:id
+//app.put('/api/campaign_notes/:note_id', requireAuth, async (req, res) => {
+//    try {
+//        const { content } = req.body;
+//
+//        const [updatedRowsCount] = await CampaignNote.update(
+//            { content },
+//            { where: { noteId: req.params.note_id } }
+//        );
+//
+//        if (updatedRowsCount === 0) {
+//            return res.status(404).json({ error: 'Campaing note not found' });
+//        }
+//
+//        const updatedNote = await CampaignNote.findByPk(req.params.note_id);
+//        res.json(updatedNote);
+//    } catch (error) {
+//        console.error('Error updating campaign note:', error);
+//        res.status(500).json({ error: 'Failed to update campaign note' });
+//    }
+//});
+//
+//// DELETE /api/campaign_notes/:id
+//app.delete('/api/campaign_notes/:note_id', requireAuth, async (req, res) => {
+//    try {
+//        const deletedRowsCount = await CampaignNote.destroy({
+//            where: { noteId: req.params.note_id }
+//        });
+//
+//        if (deletedRowsCount === 0) {
+//            return res.status(404).json({ error: 'Campaign note not found' });
+//        }
+//
+//        res.json({ message: 'Campaign note deleted successfully' });
+//    } catch (error) {
+//        console.error('Error deleting campaign note:', error);
+//        res.status(500).json({ error: 'Failed to delete campaign note.' });
+//    }
+//});
+//
+//// POST /api/campaign_note_thread
+//app.post('/api/campaign_note_thread/:campaign_id', requireAuth, checkCampaign, async (req, res) => {
+//    try {
+//        //campaign = Campaign.findByPk(req.params.campaign_id);
+////
+//        //if (!campaign) {
+//        //    return res.status(404).json({ error: 'Campaign not found' });
+//        //}
+//
+//        const { toCharacter } = req.body;
+//
+//        const newThread = await CampaignNoteThread.create({
+//            toCharacter,
+//            campaignId: req.params.campaign_id
+//        });
+//
+//        res.status(201).json(newThread);
+//    } catch (error) {
+//        console.error('Error creating campaign note thread:', error);
+//        res.status(500).json({ error: 'Failed to create campaign note thread' });
+//    }
+//});
+//
+//app.put('/api/campaign_note_thread/:thread_id', requireAuth, async (req, res) => {
+//    try {
+//        const { toCharacter } = req.body;
+//
+//        const [updatedRowsCount] = await CampaignNoteThread.update(
+//            { toCharacter },
+//            { where: { threadId: req.params.thread_id } }
+//        );
+//
+//        if (updatedRowsCount === 0) {
+//            return res.status(404).json({ error: 'Campaign note thread not found' });
+//        }
+//
+//        const updatedThread = await CampaignNoteThread.findByPk(req.params.thread_id);
+//        res.json(updatedThread);
+//    } catch (error) {
+//        console.error('Error updating thread:', error);
+//        res.status(500).json({ error: 'Failed to update campaign note thread' });
+//    }
+//});
+//
+//app.delete('/api/campaign_note_thread/:thread_id', requireAuth, async (req, res) => {
+//    try {
+//        const deletedRowsCount = await CampaignNoteThread.destroy({
+//            where: {threadId: req.params.thread_id }
+//        });
+//
+//        if (deletedRowsCount === 0) {
+//            return res.status(404).json({ error: 'Thread not found' });
+//        }
+//
+//        res.json({ message: 'Campaign note thread deleted successfully' });
+//    } catch (error) {
+//        console.error('Error deleteing campaign note thread:', error);
+//        res.status(500).json({ error: 'Failed to delete campaign note thread' });
+//    }
+//})
 
 // PARTYMESSAGE ROUTES
 app.get('/api/party_messages', requireAuth, async (req, res) => {
@@ -864,12 +887,12 @@ app.post('/api/party_messages/:campaign_id', requireAuth, checkCampaign, require
             return res.status(404).json({error: 'Campaing not found' })
         }
 
-        const { content, userId } = req.body;
+        const { content } = req.body;
 
         const newMessage = await PartyMessage.create({
             content, 
             timePosted: require('sequelize').literal('CURRENT_TIMESTAMP'),
-            userId,
+            userId: req.user.userId,
             campaignId: req.params.campaign_id
         });
 
@@ -881,13 +904,13 @@ app.post('/api/party_messages/:campaign_id', requireAuth, checkCampaign, require
 });
 
 // PUT /api/party_messages/:id
-app.put('/api/party_messages/:message_id', requireAuth, async (req, res) => {
+app.put('/api/party_messages/:message_id', requireAuth, requireAuthor, async (req, res) => {
     try {
         const { content } = req.body;
 
         const [updatedRowsCount] = await PartyMessage.update(
             { content },
-            { where: { messageId: req.params.nessage_id } }
+            { where: { messageId: req.params.message_id } }
         );
 
         if (updatedRowsCount === 0) {
@@ -903,7 +926,7 @@ app.put('/api/party_messages/:message_id', requireAuth, async (req, res) => {
 });
 
 // DELETE /api/party_messages/:id
-app.delete('/api/party_messages/:id', requireAuth, async (req, res) => {
+app.delete('/api/party_messages/:message_id', requireAuth, requireAuthor, async (req, res) => {
     try {
         const deletedRowsCount = await PartyMessage.destroy({
             where: { messageId: req.params.message_id }
