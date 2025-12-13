@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { db, User, Campaign, PlayerCharacter, CampaignNoteThread, CampaignNote, PartyMessage } = require('./database/setup');
+const { db, User, Campaign, PlayerCharacter, PartyMessage } = require('./database/setup');
 require('dotenv').config();
 
 const app = express();

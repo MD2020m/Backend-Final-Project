@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { db, User, Campaign, PlayerCharacter, CampaignNoteThread, CampaignNote, PartyMessage } = require('./setup');
+const { db, User, Campaign, PlayerCharacter, PartyMessage } = require('./setup');
 const { now } = require('sequelize/lib/utils');
 const { Sequelize } = require('sequelize');
 
@@ -161,44 +161,6 @@ async function seedDatabase() {
             }
         ]);
 
-        // Create sample CampaignNoteThreads
-        campaignNoteThreads = await CampaignNoteThread.bulkCreate([
-            {
-                toCharacter: null,
-                campaignId: campaigns[0].campaignId
-            },
-            {
-                toCharacter: playerCharacters[0].charId,
-                campaignId: playerCharacters[0].campaignId
-            },
-            {
-                toCharacter: null,
-                campaignId: campaigns[1].campaignId
-            }
-        ]);
-
-        // Create sample CampaignNotes
-        await CampaignNote.bulkCreate([
-            {
-                content: "Hey everyone, here's an summary in case you forgot anything from last night's campaign...",
-                timePosted: Sequelize.literal('CURRENT_TIMESTAMP'),
-                userId: users[1].userId,
-                threadId: campaignNoteThreads[0].threadId
-            },
-            {
-                content: "Hey, during the long rest you took at the end of last session, your character had a dream about... ",
-                timePosted: Sequelize.literal('CURRENT_TIMESTAMP'),
-                userId: users[1].userId,
-                threadId: campaignNoteThreads[1].threadId
-            },
-            {
-                content: "Hey everyone, here's a quick preface for what's been going on before our first session in the world of High Seas Heist",
-                timePosted: Sequelize.literal('CURRENT_TIMESTAMP'),
-                userId: users[1].userId,
-                threadId: campaignNoteThreads[2].threadId
-            }
-        ]);
-
         // Create a sample PartyMessage
         await PartyMessage.bulkCreate([
             {
@@ -221,7 +183,6 @@ async function seedDatabase() {
     } catch (error) {
         console.error('Error seeding database:', error);
     } finally {
-        console.log(await PartyMessage.findAll())
         await db.close();
     }
 }

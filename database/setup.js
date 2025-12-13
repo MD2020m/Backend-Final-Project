@@ -147,36 +147,6 @@ const PlayerCharacter = db.define('PlayerCharacter', {
     }
 });
 
-// CampaignNoteThread model
-const CampaignNoteThread = db.define('CampaignNoteThread', {
-    threadId: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    toCharacter: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    }
-});
-
-// CampaignNote model
-const CampaignNote = db.define('CampaignNote', {
-    noteId: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    content: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    timePosted: {
-        type: DataTypes.DATE,
-        allowNull: false
-    }
-});
-
 // PartyMessage Model
 const PartyMessage = db.define('PartyMessage', {
     messageId: {
@@ -203,15 +173,6 @@ PlayerCharacter.belongsTo(User, {foreignKey: 'userId'});
 
 Campaign.hasMany(PlayerCharacter, {foreignKey: 'campaignId'});
 PlayerCharacter.belongsTo(Campaign, {foreignKey: 'campaignId'});
-
-Campaign.hasMany(CampaignNoteThread, {foreignKey: 'campaignId'});
-CampaignNoteThread.belongsTo(Campaign, {foreignKey: 'campaignId'});
-
-CampaignNoteThread.hasMany(CampaignNote, {foreignKey: 'threadId'});
-CampaignNote.belongsTo(CampaignNoteThread, {foreignKey: 'threadId'});
-
-User.hasMany(CampaignNote, { foreignKey: 'userId' });
-CampaignNote.belongsTo(User, {foreignKey: 'userId' });
 
 Campaign.hasMany(PartyMessage, {foreignKey: 'campaignId'});
 PartyMessage.belongsTo(Campaign, {foreignKey: 'campaignId'});
@@ -241,7 +202,5 @@ module.exports = {
     User,
     Campaign,
     PlayerCharacter,
-    CampaignNoteThread,
-    CampaignNote,
     PartyMessage
 };
