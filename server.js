@@ -9,7 +9,20 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 
-// JWT authentication middleware
+// Check if User is banned
+async function checkBanned(req, res, next) {
+    try {
+        if (req.user.role == 'banned') {
+            return res.status(403).json({ message: "You are banned from the platform" });
+        }
+        else {
+            next();
+        }
+    } catch (error) {
+        console.error("Error checking if user is banned:", error);
+        res.status(500).json({ error: "Failed to check if user is banned" });
+    }
+}
 
 // Check that campaign exists
 async function checkCampaign(req, res, next) {
@@ -234,7 +247,8 @@ app.post('/api/register', async (req, res) => {
         // Create user
         const newUser = await User.create({
             username,
-            password: hashedPassword
+            password: hashedPassword,
+            role: "not_banned"
         });
 
         res.status(201).json({
@@ -283,6 +297,7 @@ app.post('/api/login', async (req, res) => {
             {
                 userId: user.userId,
                 username: user.username,
+                role: user.role
             },
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN }
@@ -293,7 +308,8 @@ app.post('/api/login', async (req, res) => {
             token: token,
             user: {
                 userId: user.userId,
-                username: user.username
+                username: user.username,
+                role: user.role
             }
         });
 
@@ -309,7 +325,7 @@ app.post('/api/login', async (req, res) => {
 // GET /api/campaigns - Return all campaigns
 
 // GET endpoint to return all campaigns a User plays a character in
-app.get('/api/player/campaigns', requireAuth, async (req, res) => {
+app.get('/api/player/campaigns', requireAuth, checkBanned, async (req, res) => {
     try {
         const chars = await PlayerCharacter.findAll({
             where: {userId: req.user.userId },
@@ -341,7 +357,7 @@ app.get('/api/player/campaigns', requireAuth, async (req, res) => {
 });
 
 // GET endpoint to return all Campaigns a User DMs
-app.get('/api/dm/campaigns', requireAuth, async (req, res) => {
+app.get('/api/dm/campaigns', requireAuth, checkBanned, async (req, res) => {
     try {
         const campaigns = await Campaign.findAll({
             where: { userId: req.user.userId }
@@ -354,41 +370,10 @@ app.get('/api/dm/campaigns', requireAuth, async (req, res) => {
     }
 });
 
-// TODO: Get endpoint to return info about players and characters involved
-//app.get('/api/campaigns', requireAuth, async (req, res) => {
-//    try {
-//        const campaigns = await Campaign.findAll({
-//            include: [
-//                {
-//                    model: User,
-//                    as: 'dungeonMaster',
-//                    attributes: ['userId','username']
-//                },
-//                {
-//                    model: PlayerCharacter,
-//                    attributes: ['charId','alive','name','race','gender'],
-//                    include: [
-//                        {
-//                            model: User,
-//                            attributes: ['userId','username']
-//                        }
-//                    ]
-//                }
-//            ]
-//        });
-//
-//        res.json(campaigns);
-//    } catch (error) {
-//        console.error('Error fetching campaigns:', error);
-//        res.status(500).json({ error: 'Failed to fetch campaigns' });
-//    }
-//});
 
-// TODO: Adjust this endpoint to require authorization to view the campaign
-// GET /api/campaing/:id - Return a Campaign by id
 
 // TODO: Get endpoint to return info about characters and players involved
-app.get('/api/campaigns/:campaign_id', requireAuth, checkCampaign, requireParticipant, async (req, res) => {
+app.get('/api/campaigns/:campaign_id', requireAuth, checkBanned, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const campaign = await Campaign.findByPk(req.params.campaign_id, {
             include: [
@@ -414,7 +399,7 @@ app.get('/api/campaigns/:campaign_id', requireAuth, checkCampaign, requirePartic
 
 // POST /api/campaigns - Create a new campaign
 // TODO: adjust route to require authentication and automatically assign creator as DM
-app.post('/api/campaigns', requireAuth, async (req, res) => {
+app.post('/api/campaigns', requireAuth, checkBanned, async (req, res) => {
     try {
         // Get userId from JWT to assign creator as dm
         const userId = req.user.userId
@@ -436,7 +421,7 @@ app.post('/api/campaigns', requireAuth, async (req, res) => {
 });
 
 // PUT /api/campaigns/:id - Update campaign (TODO: Only allow campaign's DM)
-app.put('/api/campaigns/:campaign_id', requireAuth, checkCampaign, requireDm, async (req, res) => {
+app.put('/api/campaigns/:campaign_id', requireAuth, checkBanned, checkCampaign, requireDm, async (req, res) => {
     try {
         const {title, description, schedule } = req.body;
 
@@ -458,7 +443,7 @@ app.put('/api/campaigns/:campaign_id', requireAuth, checkCampaign, requireDm, as
 });
 
 // DELETE /api/campaigns/:id - Delete Campaign (TODO: Campaign's DM only)
-app.delete('/api/campaigns/:campaign_id', requireAuth, checkCampaign, requireDm, async (req, res) => {
+app.delete('/api/campaigns/:campaign_id', requireAuth, checkBanned, checkCampaign, requireDm, async (req, res) => {
     try {
         const deletedRowsCount = await Campaign.destroy({
             where: { campaignId: req.params.campaign_id }
@@ -479,7 +464,7 @@ app.delete('/api/campaigns/:campaign_id', requireAuth, checkCampaign, requireDm,
 // PLAYERCHARACTER ROUTES 
 
 // GET /api/dm/:campaign_id/characters
-app.get('/api/dm/:campaign_id/characters', requireAuth, checkCampaign, requireDm, async (req, res) => {
+app.get('/api/dm/:campaign_id/characters', requireAuth, checkBanned, checkCampaign, requireDm, async (req, res) => {
     try {
         const characters = await PlayerCharacter.findAll({
             where: { campaignId: req.params.campaign_id }
@@ -493,7 +478,7 @@ app.get('/api/dm/:campaign_id/characters', requireAuth, checkCampaign, requireDm
 });
 
 // GET /api/dm/:campaign_id/characters/:character_id
-app.get('/api/dm/:campaign_id/characters/:character_id', requireAuth, checkCampaign, requireDm, async (req, res) => {
+app.get('/api/dm/:campaign_id/characters/:character_id', requireAuth, checkBanned, checkCampaign, requireDm, async (req, res) => {
     try {
         console.log(req.params.character_id);
 
@@ -512,7 +497,7 @@ app.get('/api/dm/:campaign_id/characters/:character_id', requireAuth, checkCampa
     }
 });
 
-app.get('/api/player/:campaign_id/characters', requireAuth, checkCampaign, requireParticipant, async (req, res) => {
+app.get('/api/player/:campaign_id/characters', requireAuth, checkBanned, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const characters = await PlayerCharacter.findAll({
             where: {campaignId: req.params.campaign_id},
@@ -526,7 +511,7 @@ app.get('/api/player/:campaign_id/characters', requireAuth, checkCampaign, requi
     }
 });
 
-app.get('/api/player/:campaign_id/characters/:character_id', requireAuth, checkCampaign, requireParticipant, async (req, res) => {
+app.get('/api/player/:campaign_id/characters/:character_id', requireAuth, checkBanned, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const character = await PlayerCharacter.findByPk(req.params.character_id);
 
@@ -547,7 +532,7 @@ app.get('/api/player/:campaign_id/characters/:character_id', requireAuth, checkC
 
 // GET /api/my_characters - Currently returns all characters (Later to return only a User's characters)
 // TODO: adjust endpoint to require authentication
-app.get('/api/my_characters', requireAuth, async (req, res) => {
+app.get('/api/my_characters', requireAuth, checkBanned, async (req, res) => {
     try{
         const userId = req.user.userId;
 
@@ -562,7 +547,7 @@ app.get('/api/my_characters', requireAuth, async (req, res) => {
     }
 });
 
-app.get('/api/my_characters/:char_id', requireAuth, requireOwner, async (req, res) => {
+app.get('/api/my_characters/:char_id', requireAuth, checkBanned, requireOwner, async (req, res) => {
     try {
         const char = await PlayerCharacter.findByPk(req.params.char_id);
 
@@ -580,7 +565,7 @@ app.get('/api/my_characters/:char_id', requireAuth, requireOwner, async (req, re
 // TODO: Add POST, PUT, DELETE for PlayerCharacters
 
 // POST/ api/my_characters - create a new PlayerCharacter
-app.post('/api/my_characters', requireAuth, async (req, res) => {
+app.post('/api/my_characters', requireAuth, checkBanned, async (req, res) => {
     try{
         const userId = req.user.userId
 
@@ -627,7 +612,7 @@ app.post('/api/my_characters', requireAuth, async (req, res) => {
 });
 
 // PUT /api/my_characters/:id - Update an existing character
-app.put('/api/my_characters/:char_id', requireAuth, requireOwner, async (req, res) => {
+app.put('/api/my_characters/:char_id', requireAuth, checkBanned, requireOwner, async (req, res) => {
     try {
         const { 
             alive, name, race, gender, primaryClass, primaryClassLevel,
@@ -659,7 +644,7 @@ app.put('/api/my_characters/:char_id', requireAuth, requireOwner, async (req, re
 });
 
 // DELETE /api/my_characters
-app.delete('/api/my_characters/:char_id', requireAuth, requireOwner, async (req, res) => {
+app.delete('/api/my_characters/:char_id', requireAuth, checkBanned, requireOwner, async (req, res) => {
     try {
         const deletedRowsCount = await PlayerCharacter.destroy({
             where: { charId: req.params.char_id }
@@ -676,175 +661,8 @@ app.delete('/api/my_characters/:char_id', requireAuth, requireOwner, async (req,
     }
 });
 
-
-
-// CAMPAINGNOTE/CAMPAIGNNOTETHREAD ROUTES
-//app.get('/api/campaign_notes', requireAuth, async (req, res) => {
-//    try {
-//        const threads = await CampaignNoteThread.findAll({
-//            include: [
-//                {
-//                    model: CampaignNote
-//                }
-//            ]
-//        });
-//
-//        res.json(threads);
-//    } catch (error) {
-//        console.error('Error fetching Campaign Note Threads:', error);
-//        res.status(500).json({ error: 'Failed to fetch campaign note threads'});
-//    }
-//});
-//
-//app.get('/api/campaign_notes/:thread_id', requireAuth, async (req, res) => {
-//    try {
-//        const thread = await CampaignNoteThread.findByPk(req.params.thread_id, {
-//            include: [
-//                {
-//                    model: CampaignNote
-//                }
-//            ]
-//        });
-//
-//        if (!thread) {
-//            return res.status(404).json({ message: 'Campaign note thread not found' });
-//        }
-//
-//        res.json(thread);
-//    } catch (error) {
-//        console.error('Failed to fetch campaign note thread:', error);
-//        res.status(500).json({ error: 'Failed to fetch campaign note thread' });
-//    }
-//});
-//
-//// POST /api/campaign_notes/:thread_id
-//app.post('/api/campaign_notes/:thread_id', requireAuth, async (req, res) => {
-//    try {
-//        thread = await CampaignNoteThread.findByPk(req.params.thread_id);
-//
-//        if (!thread) {
-//            return res.status(404).json({ error: 'Campaign note thread not found' });
-//        }
-//
-//        const { content, userId } = req.body;
-//
-//        newNote = await CampaignNote.create({
-//            content,
-//            timePosted: require('sequelize').literal('CURRENT_TIMESTAMP'),
-//            userId,
-//            threadId: req.params.thread_id
-//        });
-//
-//        res.status(201).json(newNote);
-//    } catch (error) {
-//        console.error('Error creating campaign note:', error);
-//        res.status(500).json({ error: 'Failed to create campaign note' });
-//    }
-//});
-//
-//// PUT /api/campaign_notes/:id
-//app.put('/api/campaign_notes/:note_id', requireAuth, async (req, res) => {
-//    try {
-//        const { content } = req.body;
-//
-//        const [updatedRowsCount] = await CampaignNote.update(
-//            { content },
-//            { where: { noteId: req.params.note_id } }
-//        );
-//
-//        if (updatedRowsCount === 0) {
-//            return res.status(404).json({ error: 'Campaing note not found' });
-//        }
-//
-//        const updatedNote = await CampaignNote.findByPk(req.params.note_id);
-//        res.json(updatedNote);
-//    } catch (error) {
-//        console.error('Error updating campaign note:', error);
-//        res.status(500).json({ error: 'Failed to update campaign note' });
-//    }
-//});
-//
-//// DELETE /api/campaign_notes/:id
-//app.delete('/api/campaign_notes/:note_id', requireAuth, async (req, res) => {
-//    try {
-//        const deletedRowsCount = await CampaignNote.destroy({
-//            where: { noteId: req.params.note_id }
-//        });
-//
-//        if (deletedRowsCount === 0) {
-//            return res.status(404).json({ error: 'Campaign note not found' });
-//        }
-//
-//        res.json({ message: 'Campaign note deleted successfully' });
-//    } catch (error) {
-//        console.error('Error deleting campaign note:', error);
-//        res.status(500).json({ error: 'Failed to delete campaign note.' });
-//    }
-//});
-//
-//// POST /api/campaign_note_thread
-//app.post('/api/campaign_note_thread/:campaign_id', requireAuth, checkCampaign, async (req, res) => {
-//    try {
-//        //campaign = Campaign.findByPk(req.params.campaign_id);
-////
-//        //if (!campaign) {
-//        //    return res.status(404).json({ error: 'Campaign not found' });
-//        //}
-//
-//        const { toCharacter } = req.body;
-//
-//        const newThread = await CampaignNoteThread.create({
-//            toCharacter,
-//            campaignId: req.params.campaign_id
-//        });
-//
-//        res.status(201).json(newThread);
-//    } catch (error) {
-//        console.error('Error creating campaign note thread:', error);
-//        res.status(500).json({ error: 'Failed to create campaign note thread' });
-//    }
-//});
-//
-//app.put('/api/campaign_note_thread/:thread_id', requireAuth, async (req, res) => {
-//    try {
-//        const { toCharacter } = req.body;
-//
-//        const [updatedRowsCount] = await CampaignNoteThread.update(
-//            { toCharacter },
-//            { where: { threadId: req.params.thread_id } }
-//        );
-//
-//        if (updatedRowsCount === 0) {
-//            return res.status(404).json({ error: 'Campaign note thread not found' });
-//        }
-//
-//        const updatedThread = await CampaignNoteThread.findByPk(req.params.thread_id);
-//        res.json(updatedThread);
-//    } catch (error) {
-//        console.error('Error updating thread:', error);
-//        res.status(500).json({ error: 'Failed to update campaign note thread' });
-//    }
-//});
-//
-//app.delete('/api/campaign_note_thread/:thread_id', requireAuth, async (req, res) => {
-//    try {
-//        const deletedRowsCount = await CampaignNoteThread.destroy({
-//            where: {threadId: req.params.thread_id }
-//        });
-//
-//        if (deletedRowsCount === 0) {
-//            return res.status(404).json({ error: 'Thread not found' });
-//        }
-//
-//        res.json({ message: 'Campaign note thread deleted successfully' });
-//    } catch (error) {
-//        console.error('Error deleteing campaign note thread:', error);
-//        res.status(500).json({ error: 'Failed to delete campaign note thread' });
-//    }
-//})
-
 // PARTYMESSAGE ROUTES
-app.get('/api/party_messages', requireAuth, async (req, res) => {
+app.get('/api/party_messages', requireAuth, checkBanned, async (req, res) => {
     try {
         const messages = await PartyMessage.findAll();
 
@@ -855,7 +673,7 @@ app.get('/api/party_messages', requireAuth, async (req, res) => {
     }
 });
 
-app.get('/api/party_messages/:campaign_id', requireAuth, checkCampaign, requireParticipant, async (req, res) => {
+app.get('/api/party_messages/:campaign_id', requireAuth, checkBanned, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const campaign = await Campaign.findByPk(req.params.campaign_id);
         
@@ -879,7 +697,7 @@ app.get('/api/party_messages/:campaign_id', requireAuth, checkCampaign, requireP
 });
 
 // POST /api/party_messages/:campaign_id
-app.post('/api/party_messages/:campaign_id', requireAuth, checkCampaign, requireParticipant, async (req, res) => {
+app.post('/api/party_messages/:campaign_id', requireAuth, checkBanned, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const campaign = await Campaign.findByPk(req.params.campaign_id);
 
@@ -904,7 +722,7 @@ app.post('/api/party_messages/:campaign_id', requireAuth, checkCampaign, require
 });
 
 // PUT /api/party_messages/:id
-app.put('/api/party_messages/:message_id', requireAuth, requireAuthor, async (req, res) => {
+app.put('/api/party_messages/:message_id', requireAuth, checkBanned, requireAuthor, async (req, res) => {
     try {
         const { content } = req.body;
 
@@ -926,7 +744,7 @@ app.put('/api/party_messages/:message_id', requireAuth, requireAuthor, async (re
 });
 
 // DELETE /api/party_messages/:id
-app.delete('/api/party_messages/:message_id', requireAuth, requireAuthor, async (req, res) => {
+app.delete('/api/party_messages/:message_id', requireAuth, checkBanned, requireAuthor, async (req, res) => {
     try {
         const deletedRowsCount = await PartyMessage.destroy({
             where: { messageId: req.params.message_id }

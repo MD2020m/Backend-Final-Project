@@ -15,15 +15,23 @@ async function seedDatabase() {
         const users = await User.bulkCreate([
             {
                 username: 'dmarsh00',
-                password: hashedPassword
+                password: hashedPassword,
+                role: 'not banned'
             },
             {
                 username: 'tofutron',
-                password: hashedPassword
+                password: hashedPassword,
+                role: 'not banned'
             },
             {
                 username: 'totinos34',
-                password: hashedPassword
+                password: hashedPassword,
+                role: 'not banned'
+            },
+            {
+                username: 'badguy12',
+                password: hashedPassword,
+                role: 'banned'
             }
         ]);
 
