@@ -81,13 +81,8 @@ function requireDm(req, res, next) {
     try {
         const userId = req.user.userId;
 
-        // Retrieve DM userId from campaign
-        //const reqCampaign = req.campaign;
         const campaignDmId = req.campaign.userId;
 
-        //console.log(userId);
-        //console.log(campaignDmId);
-        // Check if User is campaign's dm
         if (userId == campaignDmId) {
             next();
         }
@@ -102,6 +97,7 @@ function requireDm(req, res, next) {
     }
 }
 
+// Require user to be owner of a given player character
 async function requireOwner(req, res, next) {
     try{
         playerCharacter = await PlayerCharacter.findByPk(req.params.char_id);
@@ -129,6 +125,7 @@ async function requireOwner(req, res, next) {
     }
 }
 
+// Require user to be dm or player in a given campaign
 async function requireParticipant(req, res, next) {
     try {
         campaign = req.campaign;
@@ -148,9 +145,6 @@ async function requireParticipant(req, res, next) {
                 playerUsers.push(players[i]["userId"]);
             }
 
-            //console.log(req.user.userId);
-            //console.log(playerUsers);
-            //console.log(playerUsers.includes(req.user.userId));
             if (playerUsers.includes(req.user.userId)) {
                 next();
             }
@@ -167,6 +161,7 @@ async function requireParticipant(req, res, next) {
     }
 }
 
+// Require user to be author of a given party message
 async function requireAuthor(req, res, next) {
     try {
         const note = await PartyMessage.findByPk(req.params.message_id);
@@ -174,8 +169,6 @@ async function requireAuthor(req, res, next) {
         if (!note) {
             res.status(404).json({ error: "Message not found" });
         }
-        console.log(req.user.userId);
-        console.log(note.userId);
 
         if (req.user.userId == note.userId) {
             next();
@@ -202,7 +195,7 @@ const requestLogger = (req, res, next) => {
     next();
 }
 
-
+// Implement middleware
 app.use(express.json());
 
 const cors = require('cors');
@@ -321,9 +314,6 @@ app.post('/api/login', async (req, res) => {
 
 // CAMPAIGN ROUTES 
 
-// TODO: Adjust this endpoint to return only campaigns a user is involved in
-// GET /api/campaigns - Return all campaigns
-
 // GET endpoint to return all campaigns a User plays a character in
 app.get('/api/player/campaigns', requireAuth, checkBanned, async (req, res) => {
     try {
@@ -332,16 +322,11 @@ app.get('/api/player/campaigns', requireAuth, checkBanned, async (req, res) => {
             attributes: ["campaignId"]
         });
 
-        //console.log(chars.length)
-        //console.log(chars[0]["campaignId"]);
-
         campaignIds = []
 
         for (let i = 0; i < chars.length; i++) {
             campaignIds.push(chars[i]["campaignId"]);
         }
-
-        //console.log(campaignIds);
 
         const campaigns = await Campaign.findAll({
             where: {
@@ -370,9 +355,7 @@ app.get('/api/dm/campaigns', requireAuth, checkBanned, async (req, res) => {
     }
 });
 
-
-
-// TODO: Get endpoint to return info about characters and players involved
+// GET endpoint to return a campaign by id if a User DMs for it
 app.get('/api/campaigns/:campaign_id', requireAuth, checkBanned, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const campaign = await Campaign.findByPk(req.params.campaign_id, {
@@ -398,7 +381,6 @@ app.get('/api/campaigns/:campaign_id', requireAuth, checkBanned, checkCampaign, 
 });
 
 // POST /api/campaigns - Create a new campaign
-// TODO: adjust route to require authentication and automatically assign creator as DM
 app.post('/api/campaigns', requireAuth, checkBanned, async (req, res) => {
     try {
         // Get userId from JWT to assign creator as dm
@@ -463,7 +445,7 @@ app.delete('/api/campaigns/:campaign_id', requireAuth, checkBanned, checkCampaig
 
 // PLAYERCHARACTER ROUTES 
 
-// GET /api/dm/:campaign_id/characters
+// GET /api/dm/:campaign_id/characters - return complete character information for characters in a campaign a user dms
 app.get('/api/dm/:campaign_id/characters', requireAuth, checkBanned, checkCampaign, requireDm, async (req, res) => {
     try {
         const characters = await PlayerCharacter.findAll({
@@ -477,7 +459,7 @@ app.get('/api/dm/:campaign_id/characters', requireAuth, checkBanned, checkCampai
     }
 });
 
-// GET /api/dm/:campaign_id/characters/:character_id
+// GET /api/dm/:campaign_id/characters/:character_id - return complete character information for a single character by id in a campaign a user dms
 app.get('/api/dm/:campaign_id/characters/:character_id', requireAuth, checkBanned, checkCampaign, requireDm, async (req, res) => {
     try {
         console.log(req.params.character_id);
@@ -497,6 +479,7 @@ app.get('/api/dm/:campaign_id/characters/:character_id', requireAuth, checkBanne
     }
 });
 
+// Return incomplete information for all characters a user is a player in
 app.get('/api/player/:campaign_id/characters', requireAuth, checkBanned, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const characters = await PlayerCharacter.findAll({
@@ -511,6 +494,7 @@ app.get('/api/player/:campaign_id/characters', requireAuth, checkBanned, checkCa
     }
 });
 
+// Return incomplete information for a single character in a campaign a user is a player in
 app.get('/api/player/:campaign_id/characters/:character_id', requireAuth, checkBanned, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const character = await PlayerCharacter.findByPk(req.params.character_id);
@@ -530,8 +514,7 @@ app.get('/api/player/:campaign_id/characters/:character_id', requireAuth, checkB
     }
 })
 
-// GET /api/my_characters - Currently returns all characters (Later to return only a User's characters)
-// TODO: adjust endpoint to require authentication
+// GET /api/my_characters - Returns complete information about a user's player characters
 app.get('/api/my_characters', requireAuth, checkBanned, async (req, res) => {
     try{
         const userId = req.user.userId;
@@ -547,6 +530,7 @@ app.get('/api/my_characters', requireAuth, checkBanned, async (req, res) => {
     }
 });
 
+// Return complete information about one of a user's characters by id
 app.get('/api/my_characters/:char_id', requireAuth, checkBanned, requireOwner, async (req, res) => {
     try {
         const char = await PlayerCharacter.findByPk(req.params.char_id);
@@ -561,8 +545,6 @@ app.get('/api/my_characters/:char_id', requireAuth, checkBanned, requireOwner, a
         res.status(500).json( {error: 'Failed to fetch character' });
     }
 });
-
-// TODO: Add POST, PUT, DELETE for PlayerCharacters
 
 // POST/ api/my_characters - create a new PlayerCharacter
 app.post('/api/my_characters', requireAuth, checkBanned, async (req, res) => {
@@ -643,7 +625,7 @@ app.put('/api/my_characters/:char_id', requireAuth, checkBanned, requireOwner, a
     }
 });
 
-// DELETE /api/my_characters
+// DELETE /api/my_characters - delete a Player Character
 app.delete('/api/my_characters/:char_id', requireAuth, checkBanned, requireOwner, async (req, res) => {
     try {
         const deletedRowsCount = await PlayerCharacter.destroy({
@@ -662,6 +644,7 @@ app.delete('/api/my_characters/:char_id', requireAuth, checkBanned, requireOwner
 });
 
 // PARTYMESSAGE ROUTES
+// GET all party messages
 app.get('/api/party_messages', requireAuth, checkBanned, async (req, res) => {
     try {
         const messages = await PartyMessage.findAll();
@@ -673,6 +656,7 @@ app.get('/api/party_messages', requireAuth, checkBanned, async (req, res) => {
     }
 });
 
+// GET all party messages for a single campaign by campaignId
 app.get('/api/party_messages/:campaign_id', requireAuth, checkBanned, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const campaign = await Campaign.findByPk(req.params.campaign_id);
@@ -696,7 +680,7 @@ app.get('/api/party_messages/:campaign_id', requireAuth, checkBanned, checkCampa
     }
 });
 
-// POST /api/party_messages/:campaign_id
+// POST /api/party_messages/:campaign_id - Create a new party message for a given campaign
 app.post('/api/party_messages/:campaign_id', requireAuth, checkBanned, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const campaign = await Campaign.findByPk(req.params.campaign_id);
@@ -721,7 +705,7 @@ app.post('/api/party_messages/:campaign_id', requireAuth, checkBanned, checkCamp
     }
 });
 
-// PUT /api/party_messages/:id
+// PUT /api/party_messages/:id - edit an existing party message by messageId
 app.put('/api/party_messages/:message_id', requireAuth, checkBanned, requireAuthor, async (req, res) => {
     try {
         const { content } = req.body;
@@ -743,7 +727,7 @@ app.put('/api/party_messages/:message_id', requireAuth, checkBanned, requireAuth
     }
 });
 
-// DELETE /api/party_messages/:id
+// DELETE /api/party_messages/:id - Delete an existing party message
 app.delete('/api/party_messages/:message_id', requireAuth, checkBanned, requireAuthor, async (req, res) => {
     try {
         const deletedRowsCount = await PartyMessage.destroy({
