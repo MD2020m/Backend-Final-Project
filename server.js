@@ -199,6 +199,7 @@ const requestLogger = (req, res, next) => {
 app.use(express.json());
 
 const cors = require('cors');
+const { and } = require('sequelize');
 app.use(requestLogger);
 
 
@@ -498,18 +499,18 @@ app.get('/api/player/:campaign_id/characters', requireAuth, checkBanned, checkCa
 app.get('/api/player/:campaign_id/characters/:character_id', requireAuth, checkBanned, checkCampaign, requireParticipant, async (req, res) => {
     try {
         const character = await PlayerCharacter.findByPk(req.params.character_id);
-
-        console.log(character.campaignId);
-        console.log(req.params.campaign_id);
-
-        if (character.campaignId == req.params.campaign_id) {
-            res.json(character);
-        }
-        else {
-            res.status(404).json({error: "Character is not in specified campaign"});
+        if (!character) {
+            return res.status(404).json({ error: "Player character not found" });
+        } else {
+            if (character.campaignId == req.params.campaign_id) {
+                res.json(character);
+            }
+            else {
+                res.status(404).json({error: "Character is not in specified campaign"});
+            }
         }
     } catch (error) {
-        console.error("Error fetching player character");
+        console.error("Error fetching player character", error);
         res.status(500).json({ error: "Error fetching player character" });
     }
 })
