@@ -296,7 +296,7 @@ app.post('/api/login', async (req, res) => {
             { expiresIn: process.env.JWT_EXPIRES_IN }
         );
 
-        res.json({
+        res.status(201).json({
             message: 'Login successful',
             token: token,
             user: {
