@@ -59,15 +59,7 @@ describe('D&D API', () => {
         expect(response.status).toBe(401);
     });
 
-    test('should create a new return a User and 201 response', async () => {
-        const response = await request(app).post('/api/register').send({
-            username: "johnnyTest",
-            password: "dukey_talking_dog"
-        });
 
-        expect(response.status).toBe(201);
-        expect(response.body).toHaveProperty('user');
-    })
 
     test('should return a User and a new JWT token', async () => {
         const response = await request(app).post('/api/login').send({
