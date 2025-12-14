@@ -4,4 +4,3 @@ node_modules/
 *.sqlite3
 *.log
 .env
-*node_modules
