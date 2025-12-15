@@ -7,10 +7,10 @@ This API is intended to be used by players and dungeon masters participating in 
 ## Authentication/Authorization
 Authentication and authorization features have been added. These features implement a JWT token which is returned in the response body when a user successfully logs in through the `POST /api/login` endpoint. The token should then be attached to the `authentication` header of any requests to access, create, modify, or delete resources. 
 
-## Role Based Authorization
+### Role Based Authorization
 A role based authorization feature has been added. Each user now has a `role` field which can contain either `"banned"` or `"not banned"` and will be set to `"not banned"` by default. If a User's role is `"banned"`, that user will not be able to access any endpoints using the JWT token returned to them at login. If a user's role is `"not banned"` they will have access to various endpoints based on other authorization rules
 
-## Other Authorization Rules
+### Other Authorization Rules
 Other authorization rules have been implemented:
 - A User can only access Campaigns they participate in as either a DM or a Player
 - Users can access complete information about Player Characters related to Campaigns they DM for
@@ -19,6 +19,9 @@ Other authorization rules have been implemented:
 - Users can only edit or delete their own Player Characters
 - Users can access Party Messages related to Campaigns they participate in
 - Users can only edit or delete their own Party Messages
+
+## Other Changes
+Removed CampaignNote and CampaignNoteThread records and endpoints for simplicity
 
 # Resources
 At a high level, the API's resources can be though of as falling into two categories: game elements, and communications. Game elements currently include data types Campaign, and PlayerCharacter. Communications currently includes data types CampaignNoteThread, CampaignNote, and PartyMessage. The exception to this categorization system is the User data type, which will store profile information for future implementation of authorization and authentication processes. In addition, the User data type serves as an 'owner' of instances of other data types. For example, a dungeon master can be though of as an 'owner' of a campaign and a User is the 'owner' of the PlayerCharacters they create. A User's 'Ownership' will be used in future authorization implementation to determine whether a given User is authorized to access a given resource.
@@ -88,6 +91,10 @@ A PartyMessage belongs to exactly one campaign and exactly one user (its author)
 ---
 # Setup
 To setup this application on your local device, clone this repository and follow these directions:
+
+## Install dependencies
+Run `npm install` to install project dependencies
+
 ## Database Setup
 database/setup.js sets up the database for this application. Before running setup.js, you should configure a .env file with a DB_TYPE variable defining the SQL dialect you wish to use, a DB_NAME variable providing a name for the .db file you wish to create, and a NODE_ENV variable specifying the type of environment you intend to operate the database in. 
 
